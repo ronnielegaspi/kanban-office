@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('munder', {
   getProjects: () => ipcRenderer.invoke('get-projects'),
   saveProjects: (payload) => ipcRenderer.invoke('save-projects', payload),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  getVersion: () => ipcRenderer.invoke('get-version'),
   checkUpdate: () => ipcRenderer.invoke('check-update'),
   downloadUpdate: (url) => ipcRenderer.invoke('download-update', url),
   onState: (cb) => ipcRenderer.on('state-update', (_e, s) => cb(s)),

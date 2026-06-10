@@ -244,6 +244,7 @@ ipcMain.handle('pick-folder', async () => { try { const r = await dialog.showOpe
 /* ---- projects (separate tasks + agents per project) ---- */
 const PROJECTS_CFG = path.join(WORKSPACE, 'projects.json');
 ipcMain.handle('open-external', async (_e, url) => { try { if (/^https?:\/\//i.test(url || '')) await shell.openExternal(url); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; } });
+ipcMain.handle('get-version', () => { try { return app.getVersion(); } catch (e) { return ''; } });
 ipcMain.handle('check-update', async () => {
   try {
     if (/^YOUR_GH_USER\//.test(UPDATE_REPO)) return { ok: false, error: 'repo not configured' };

@@ -11,12 +11,12 @@
   :root{--bg:#10131c;--bg2:#171b27;--panel:#1b2030;--panel2:#222840;--ink:#e7ecf6;--ink-soft:#9aa6c4;
     --gold:#ffd34d;--teal:#46d6c0;--navy:#2d3f63;--edge:#0a0d14;--line:#2c3450;
     --p0:#ff5147;--p1:#ff9b3d;--p2:#4aa3ff;--p3:#8a93ad;}
-  *{box-sizing:border-box;}html,body{margin:0;height:100%;}
+  *{box-sizing:border-box;}html,body{margin:0;height:100%;overflow:hidden;}
   body{background:radial-gradient(1200px 700px at 75% -10%,#1b2740 0%,transparent 60%),var(--bg);color:var(--ink);
     font-family:"VT323","Courier New",monospace;font-size:18px;padding:clamp(8px,2vw,22px);image-rendering:pixelated;}
-  .wrap{width:min(98vw,2600px);margin:0 auto;}
+  .wrap{width:min(98vw,2600px);margin:0 auto;height:100%;display:flex;flex-direction:column;}
   .gp{border:2px solid var(--line);border-radius:8px;background:var(--panel);box-shadow:0 0 0 2px #0a0d1466,0 8px 22px #0006 inset;}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:10px;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:10px;flex:0 0 auto;}
   .brand{display:flex;align-items:center;gap:13px;flex:0 1 auto;min-width:0;}
   .logo{width:50px;height:50px;flex:0 0 auto;background:linear-gradient(160deg,#3a4f7a,#2d3f63);display:grid;place-items:center;color:var(--gold);
     font-family:"Silkscreen",monospace;font-size:20px;border:2px solid var(--gold);border-radius:9px;box-shadow:0 0 12px #ffd34d44;}
@@ -29,8 +29,8 @@
   .gbtn{font-family:"Silkscreen",monospace;font-size:11px;white-space:nowrap;flex:0 0 auto;background:var(--panel2);color:var(--ink);cursor:pointer;border:2px solid var(--line);border-radius:7px;padding:9px 10px;transition:transform .06s, box-shadow .06s;}
   .gbtn:hover{box-shadow:0 0 10px #46d6c055;border-color:var(--teal);} .gbtn:active{transform:translateY(2px);}
   .gbtn.gold{background:linear-gradient(180deg,#3a3a22,#2a2a18);color:var(--gold);border-color:var(--gold);}
-  .stage{display:block;}
-  .floorcard{background:#0a0c12;padding:8px;border-radius:10px;border:2px solid var(--line);overflow:hidden;margin:0 auto;display:flex;justify-content:center;align-items:center;}
+  .stage{flex:1 1 auto;min-height:0;display:flex;}
+  .floorcard{background:#0a0c12;padding:8px;border-radius:10px;border:2px solid var(--line);overflow:hidden;flex:1 1 auto;min-height:0;width:100%;display:flex;justify-content:center;align-items:center;}
   canvas{width:100%;height:auto;display:block;image-rendering:pixelated;cursor:default;}
   .hud{display:flex;flex-direction:column;gap:0;min-height:300px;}
   .tabs{display:flex;gap:4px;padding:6px 6px 0;background:var(--bg2);border:2px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;}
@@ -130,8 +130,8 @@
   .noterow{display:flex;gap:6px;align-items:center;}
   .notets{flex:1;font-size:11px;color:var(--ink-soft);font-family:"Silkscreen",monospace;}
   .chip{display:inline-block;color:#10131c;font-family:"Silkscreen",monospace;font-size:8px;padding:2px 5px;border-radius:3px;margin-right:5px;}
-  footer{margin-top:12px;color:var(--ink-soft);font-size:14px;text-align:center;} footer code{background:var(--bg2);padding:1px 5px;border-radius:4px;}
-  .roster{max-width:1040px;margin:12px auto 0;display:flex;align-items:center;gap:14px;padding:8px 12px;flex-wrap:wrap;justify-content:center;}
+  footer{margin-top:8px;color:var(--ink-soft);font-size:14px;text-align:center;flex:0 0 auto;} footer code{background:var(--bg2);padding:1px 5px;border-radius:4px;}
+  .roster{max-width:1040px;margin:8px auto 0;display:flex;align-items:center;gap:14px;padding:6px 12px;flex-wrap:wrap;justify-content:center;flex:0 0 auto;max-height:22vh;overflow:auto;}
   .rgroup{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
   .rlabel{font-family:"Silkscreen",monospace;font-size:8px;color:var(--teal);margin-right:3px;}
   .rdiv{width:2px;height:26px;background:var(--line);}
@@ -175,6 +175,7 @@
       <button class="gbtn gold" id="termBtn">▶ TERMINAL</button>
       <button class="gbtn gold" id="rtBtn">🗣️ ROUNDTABLE</button>
       <button class="gbtn" id="autoBtn">AUTO-FLOW</button>
+      <button class="gbtn" id="optBtn">⚙ OPTIONS</button>
     </div>
   </header>
 
@@ -1254,6 +1255,33 @@ function wireManager(){
   const ab=document.getElementById('addAg');if(ab)ab.onclick=()=>{commitMgr();const nm='New Agent '+(roster.length+1);roster.push({id:slugId(nm),name:nm,role:'specialist',model:'sonnet',color:'#'+((hashStr('a'+roster.length)&0xffffff).toString(16).padStart(6,'0'))});persistProjects();reRenderManager();};
   const sb=document.getElementById('saveAg');if(sb)sb.onclick=async()=>{commitMgr();ensureAgents();renderRoster();const st=document.getElementById('agStatus');
     if(ELECTRON){try{const r=await window.munder.saveAgents({agents:roster,removed:removedIds});if(st)st.textContent=r&&r.ok?'Saved ✓':'Failed';removedIds=[];}catch(e){if(st)st.textContent='Error: '+e.message;}}else if(st)st.textContent='Saved locally.';persistProjects();};}
+let appVersion='';
+function openOptions(){const v=appVersion||'…';
+  openModal('OPTIONS',
+    '<div class="sect">APP</div>'+
+    '<div class="kv" style="display:flex;align-items:center;gap:10px"><span class="logo" style="width:34px;height:34px;font-size:14px;flex:none">KO</span><div><b style="font-family:Silkscreen;font-size:11px;color:var(--gold)">KANBAN OFFICE</b><div class="why" style="margin:2px 0 0">Version <b id="optVer">v'+esc(v)+'</b></div></div></div>'+
+    '<div class="row2" style="margin-top:8px"><button class="mini gold" id="optCheck">⟳ CHECK FOR UPDATES</button> <span id="optUpSt" style="font-size:13px;color:var(--ink-soft)"></span></div>'+
+    '<div class="sect" style="margin-top:12px">CREDITS</div>'+
+    '<div class="why" style="line-height:1.7">Created by <b>Ronnie Legaspi</b>.<br>Planning agents run on <b>Claude Code</b> (Anthropic) using your own account.<br>Pixel-art office, Kanban &amp; Gantt engine: hand-built HTML canvas — no frameworks.</div>'+
+    '<div class="row2" style="margin-top:8px"><button class="mini" id="optRepo">GITHUB ↗</button><button class="mini" id="optRel">RELEASES ↗</button></div>'+
+    '<div class="why" style="margin-top:10px;font-size:12px">Updates pull automatically from GitHub Releases. Unsigned build — Windows SmartScreen may warn on first run.</div>');
+  if(appVersion===''&&ELECTRON&&window.munder.getVersion)window.munder.getVersion().then(x=>{appVersion=x;const e=document.getElementById('optVer');if(e)e.textContent='v'+x;});
+  const ext=u=>{if(ELECTRON&&window.munder.openExternal)window.munder.openExternal(u);else window.open(u,'_blank');};
+  document.getElementById('optRepo').onclick=()=>ext('https://github.com/ronnielegaspi/kanban-office');
+  document.getElementById('optRel').onclick=()=>ext('https://github.com/ronnielegaspi/kanban-office/releases');
+  document.getElementById('optCheck').onclick=checkUpdatesUI;}
+async function checkUpdatesUI(){const st=document.getElementById('optUpSt'),btn=document.getElementById('optCheck');
+  if(!ELECTRON||!window.munder.checkUpdate){if(st)st.textContent='Updates work in the desktop app only.';return;}
+  if(st)st.textContent='Checking…';if(btn)btn.disabled=true;
+  try{const u=await window.munder.checkUpdate();
+    if(!u||!u.ok){if(st)st.textContent='Could not reach GitHub'+(u&&u.error?(' ('+u.error+')'):'')+'.';if(btn)btn.disabled=false;return;}
+    if(!u.newer){if(st)st.textContent='✓ Up to date (v'+u.current+').';if(btn)btn.disabled=false;return;}
+    if(st)st.innerHTML='Update found: <b>v'+esc(u.latest)+'</b> — downloading…';
+    if(!u.url){if(u.page&&window.munder.openExternal)window.munder.openExternal(u.page);if(btn)btn.disabled=false;return;}
+    const r=await window.munder.downloadUpdate(u.url);
+    if(!r||!r.ok){if(st)st.textContent='Download failed — opening release page.';if(u.page&&window.munder.openExternal)window.munder.openExternal(u.page);if(btn)btn.disabled=false;}
+    else if(st)st.textContent='Downloaded ✓ — installing & restarting…';
+  }catch(e){if(st)st.textContent='Error: '+e.message;if(btn)btn.disabled=false;}}
 function openManager(){openModal('MANAGE AGENTS — '+roster.length,managerBodyHtml());wireManager();}
 function commitMgr(){const el=document.getElementById('agRows');if(!el)return;el.querySelectorAll('.row2').forEach(row=>{const i=+row.getAttribute('data-i');const a=roster[i];if(!a)return;a.name=row.querySelector('.an').value.trim()||a.id;a.role=row.querySelector('.ar').value.trim();a.model=row.querySelector('.am').value;a.color=row.querySelector('.ac').value;});}
 function openLinks(){const rm='class="mini red rmlink"';const lst=arr=>arr.length?arr.map(r=>'<div class="f2" style="display:flex;gap:6px;align-items:center;margin:3px 0"><span class="chip" style="background:'+(r.type==='rules'?'#9a6ad0':'#36b07a')+'">'+r.type+'</span><span style="flex:1;font-size:12px;word-break:break-all;color:var(--ink-soft)">'+esc(r.path)+'</span><button '+rm+' data-p="'+esc(r.path)+'">✕</button></div>').join(''):'<div class="why">none</div>';
@@ -1284,6 +1312,7 @@ document.getElementById('termBtn').onclick=()=>openPanel('terminal');
 document.getElementById('rtBtn').onclick=openRoundtable;
 function updateAutoBtn(){const b=document.getElementById('autoBtn');if(!b)return;b.textContent='⚙ AUTO-FLOW: '+(autoFlow?'ON':'OFF');if(autoFlow){b.style.background='linear-gradient(180deg,#2d6e4f,#1f4f38)';b.style.color='#dfffe9';b.style.borderColor='#46d6c0';b.style.boxShadow='0 0 12px #46d6c077';}else{b.style.background='var(--panel2)';b.style.color='var(--ink-soft)';b.style.borderColor='var(--line)';b.style.boxShadow='none';}}
 document.getElementById('autoBtn').onclick=()=>{autoFlow=!autoFlow;updateAutoBtn();toast('Auto-flow '+(autoFlow?'ON — agents pull backlog & run WIP/Review':'OFF — move cards manually'),autoFlow?'ok':'');};
+document.getElementById('optBtn').onclick=openOptions;
 updateAutoBtn();
 
 /* ---- modes ---- */
@@ -1305,6 +1334,7 @@ if(ELECTRON){setLive(true,"CLAUDE LIVE");termLine('Kanban Office — Claude Code
     try{migrateAgentIds();}catch(e){}try{cleanupSpecialistNotes();}catch(e){}
     if(!projects.length)firstRunWelcome();});
   if(window.munder.getLinks)window.munder.getLinks().then(l=>{if(l&&l.refs)links=l;});
+  if(window.munder.getVersion)window.munder.getVersion().then(v=>{appVersion=v;});
   if(window.munder.checkUpdate)setTimeout(()=>{window.munder.checkUpdate().then(u=>{if(u&&u.ok&&u.newer)showUpdatePrompt(u);}).catch(()=>{});},4000);
   window.munder.onState(s=>{if(!acceptState)return;const tgt=runProj||activeProj;if(!tgt)return;   // route the plan result to the project the run was launched for
     if(tgt===activeProj){applyState(s);if(projData[tgt])projData[tgt].state=state;}
@@ -1335,12 +1365,14 @@ else if(SERVER){setLive(true,"SERVER LIVE");termLine('Browser mode — embedded 
   poll();setInterval(poll,2000);}
 else{setLive(false,"OFFLINE");document.getElementById('foot').innerHTML='Offline (file://). Launch the Kanban Office desktop app for live mode.';termLine('Offline — launch the desktop app to run Claude Code in itself.','dim');ensureAgents();renderTab();}
 function fitFloor(){const cv=document.getElementById('floor');if(!cv)return;const card=cv.parentElement;
-  const availW=card.clientWidth-16;                                              // floorcard padding
-  const foot=document.getElementById('foot'),fh=foot?foot.offsetHeight+12:28;
-  const availH=Math.max(220,window.innerHeight-card.getBoundingClientRect().top-fh-12);
-  const ar=1840/1008;let w=availW,h=w/ar;if(h>availH){h=availH;w=h*ar;}            // contain: largest size fitting both width and height
+  // The .wrap is a viewport-height flex column (header / stage / roster / footer).
+  // .floorcard flexes to fill the leftover space, so just contain the canvas inside it.
+  const availW=Math.max(40,card.clientWidth-16);                                 // minus 8px padding each side
+  const availH=Math.max(40,card.clientHeight-16);
+  const ar=1840/1008;let w=availW,h=w/ar;if(h>availH){h=availH;w=h*ar;}          // contain: largest size fitting both
   cv.style.width=Math.round(w)+'px';cv.style.height=Math.round(h)+'px';}
 window.addEventListener('resize',fitFloor);
+try{const _fc=document.querySelector('.floorcard');if(_fc&&window.ResizeObserver)new ResizeObserver(()=>fitFloor()).observe(_fc);}catch(e){}
 ensureAgents();renderRoster();renderTab();fitFloor();setTimeout(fitFloor,60);requestAnimationFrame(drawScene);
 </script>
 </body>
