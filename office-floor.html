@@ -473,9 +473,16 @@ function ensureAgents(){computeLayout();
 
 /* ---- movement ---- */
 function doorOf(x,y){const r=roomAt(x,y);return r?ROOMS[r].door:null;}
-function routeTo(a,tx,ty){const f=freePoint(tx,ty,a.id);tx=f.x;ty=f.y;const pts=[],sd=doorOf(a.x,a.y),dd=doorOf(tx,ty);
-  if(sd){pts.push({x:sd.x,y:sd.y});pts.push({x:sd.x,y:CORRY});}else pts.push({x:a.x,y:CORRY});
-  pts.push({x:(dd?dd.x:tx),y:CORRY});if(dd)pts.push({x:dd.x,y:dd.y});pts.push({x:tx,y:ty});a.path=pts;}
+// a point just inside the room from its door, clear of the back wall + any wall-mounted board
+function doorInside(door,roomKey){const r=ROOMS[roomKey];if(!r)return {x:door.x,y:door.y};const topEdge=Math.abs(door.y-r.y)<8;return {x:door.x,y:topEdge?door.y+WALLH+12:door.y-WALLH-12};}
+function routeTo(a,tx,ty){const f=freePoint(tx,ty,a.id);tx=f.x;ty=f.y;
+  const sRoom=roomAt(a.x,a.y),dRoom=roomAt(tx,ty);
+  if(sRoom===dRoom){a.path=[{x:tx,y:ty}];return;}                  // same room (or both in the corridor) → go direct, sliding around furniture
+  const sd=sRoom?ROOMS[sRoom].door:null,dd=dRoom?ROOMS[dRoom].door:null,pts=[];
+  if(sd){const si=doorInside(sd,sRoom);pts.push({x:si.x,y:si.y},{x:sd.x,y:sd.y},{x:sd.x,y:CORRY});}else pts.push({x:a.x,y:CORRY});  // exit straight out through the doorway
+  pts.push({x:(dd?dd.x:tx),y:CORRY});                               // travel along the corridor
+  if(dd){const di=doorInside(dd,dRoom);pts.push({x:dd.x,y:dd.y},{x:di.x,y:di.y});}                                                // enter straight in through the doorway
+  pts.push({x:tx,y:ty});a.path=pts;}
 let OBS=[];
 function buildObstacles(){const o=[];
   for(const id in LAYOUT.desks){const d=LAYOUT.desks[id];o.push({x:d.dx-1,y:d.dy-6,w:32,h:23,id});} // each desk incl. monitor + chair (own desk excepted in inObstacle)
@@ -485,6 +492,11 @@ function buildObstacles(){const o=[];
   o.push({x:174,y:60,w:32,h:13},{x:176,y:84,w:46,h:14},{x:282,y:58,w:11,h:13},{x:300,y:58,w:50,h:24}); // breakroom couch, foosball, coffee, kitchen
   o.push({x:372,y:24,w:8,h:40},{x:410,y:24,w:8,h:40});              // toilet stalls
   o.push({x:444,y:158,w:7,h:16},{x:140,y:158,w:12,h:16},{x:140,y:84,w:16,h:18}); // right cooler, cabinet, bookshelf (left cooler removed — it isn't drawn)
+  // back walls of the lower rooms (split around the doorway) so agents can't stand on them; doorway gap stays open
+  ['lounge','office','bullpen'].forEach(k=>{const r=ROOMS[k],d=r.door,gap=11;
+    if(d.x-gap>r.x)o.push({x:r.x,y:r.y,w:(d.x-gap)-r.x,h:WALLH});
+    if(r.x+r.w>d.x+gap)o.push({x:d.x+gap,y:r.y,w:(r.x+r.w)-(d.x+gap),h:WALLH});});
+  o.push({x:GBD.x,y:GBD.y,w:GBD.w,h:GBD.h});                        // wall-mounted gantt board
   OBS=o;}
 function inObstacle(x,y,selfId,m){m=m||0;for(const r of OBS){if(r.id===selfId)continue;if(x>=r.x-m&&x<=r.x+r.w+m&&y>=r.y-m&&y<=r.y+r.h+m)return true;}return false;}
 const CLEAR=2;   // keep the sprite body this far off furniture so it never visually overlaps
@@ -512,7 +524,8 @@ const ACTIVITIES=[{x:312,y:92,act:'☕ getting coffee'},{x:198,y:100,act:'playin
 function think(a,time){
   const runWork=activeAgent===a.id||(busyUntil[a.id]||0)>time, cardWork=(busyWork[a.id]||0)>time;  // working = an actual run is active (set when a WIP/Review run starts)
   if(runWork||cardWork){ if(a.state!=='working'){a.state='working';const d=a.home||{fx:200,fy:CORRY};routeTo(a,d.fx,d.fy);a.bubble=null;} return; }   // working/planning -> at their own workstation
-  if(standupUntil>time){ if(a.state!=='standup'){a.state='standup';if(a.id==='architect')routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);else if(a.id!=='client'){const idx=Math.abs(hashStr(a.id))%CONF_SEATS.length,s=CONF_SEATS[idx];routeTo(a,s.x,s.y);}a.bubble=pick(STANDUP);a.bubbleUntil=time+3200;} return; }   // standup gathers the team in the conference room
+  if(standupUntil>time){ const begun=standupUntil-22000, delay=hashStr(a.id)%1500;   // stagger departures so they amble over ~1.5s instead of all bolting at once
+    if(a.state!=='standup'&&time>begun+delay){a.state='standup';if(a.id==='architect')routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);else if(a.id!=='client'){const idx=Math.abs(hashStr(a.id))%CONF_SEATS.length,s=CONF_SEATS[idx];routeTo(a,s.x,s.y);}a.bubble=pick(STANDUP);a.bubbleUntil=time+3200;} return; }   // standup gathers the team in the conference room
   if((busyBoard[a.id]||0)>time){ if(a.state!=='board'){a.state='board';routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);a.bubble=pick(["Updating board","Moving a card","Status change"]);a.bubbleUntil=time+2200;} return; }
   if(planning){ if(a.state!=='working'){a.state='working';const d=a.home||{fx:200,fy:CORRY};routeTo(a,d.fx,d.fy);} if(!a.moving&&Math.random()<0.005){a.bubble=a.id==='architect'?'Planning…':pick(STANDUP);a.bubbleUntil=time+2500;} return; }  // office is planning -> everyone stays still at their workstation
   if(a.state==='working'||a.state==='board'||a.state==='standup'){a.state='idle';a.nextIdle=0;}
@@ -885,7 +898,7 @@ function vignette(){if(!_vig){_vig=ctx.createRadialGradient(LOGW*SCALE/2,LOGH*SC
 function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first so a throttled/hidden frame still keeps the loop alive
   if(document.hidden)return;                                 // window minimised/blurred → skip work entirely
   if(now-lastT<32)return;                                    // ~30fps cap (was uncapped ~60fps) — roughly halves canvas CPU
-  const dt=Math.min(3,(now-lastT)/16.7);lastT=now;const time=now-t0;try{
+  const raw=(now-lastT)/16.7;const dt=raw>6?1:Math.min(2.4,raw);lastT=now;const time=now-t0;try{   // after a hitch (long frame) take one normal step, never a catch-up jump
   ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=false;
   P(0,0,LOGW,LOGH,"#1b2236");
   for(let x=6;x<454;x+=8)for(let y=106;y<148;y+=8)P(x,y,8,8,((x/8+(y/8|0))%2===0)?"#3a4768":"#34405e");
