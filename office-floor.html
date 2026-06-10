@@ -465,9 +465,10 @@ function drawPortrait(cnv,app,id){const c=cnv.getContext('2d');c.imageSmoothingE
   if(app.beard){F(3,7,6,1,hair);F(4,8,4,1,hair);}
   if(id==='client'){F(9,5,1,3,'#222');F(8,4,1,1,'#222');}}                               // headset
 function ensureAgents(){computeLayout();
-  roster.forEach(a=>{const home=LAYOUT.homes[a.id]||{fx:200,fy:CORRY};a.app=genApp(a); // one look, shared by sprite + portrait
+  roster.forEach((a,i)=>{const home=LAYOUT.homes[a.id]||{fx:200,fy:CORRY};a.app=genApp(a); // one look, shared by sprite + portrait
     if(!A[a.id])A[a.id]={id:a.id,x:home.fx,y:home.fy,path:[],speed:0.5,face:1,state:'idle',nextIdle:0,bubble:null,bubbleUntil:0,walk:0,app:a.app};
     else A[a.id].app=a.app;
+    A[a.id].pri=i;   // stable right-of-way rank (lower index wins) — used to break head-on/crossing ties
     A[a.id].home=home;});
   Object.keys(A).forEach(id=>{if(!roster.find(a=>a.id===id))delete A[id];});}
 
@@ -504,10 +505,24 @@ const CLEAR=2;   // keep the sprite body this far off furniture so it never visu
 function freePoint(tx,ty,self){if(!inObstacle(tx,ty,self,CLEAR))return {x:tx,y:ty};
   for(let r=2;r<=26;r+=2){for(const o of [[0,r],[0,-r],[r,0],[-r,0],[r,r],[-r,-r],[r,-r],[-r,r]]){const x=tx+o[0],y=ty+o[1];
     if(x>ENV.x+4&&x<ENV.x+ENV.w-4&&y>ENV.y+4&&y<ENV.y+ENV.h-4&&!inObstacle(x,y,self,CLEAR))return {x:x,y:y};}}return {x:tx,y:ty};}
-function moveAgent(a,dt){if(!a.path||!a.path.length){a.moving=false;return;}
+const AVOID=15, BODY=9;   // AVOID: start dodging a teammate within this range · BODY: never get closer than this
+function moveAgent(a,dt,ents){if(!a.path||!a.path.length){a.moving=false;return;}
   const tg=a.path[0],dx=tg.x-a.x,dy=tg.y-a.y,d=Math.hypot(dx,dy);
   if(d<1.1){a.x=tg.x;a.y=tg.y;a.path.shift();if(!a.path.length)a.moving=false;return;}
-  const sp=a.speed*dt,ux=dx/d,uy=dy/d,step=Math.min(sp,d),nx=a.x+ux*step,ny=a.y+uy*step;
+  let ux=dx/d,uy=dy/d;
+  // ---- agent avoidance: ONLY dodge higher-ranked teammates; they walk straight, so exactly one of any pair gives way (no two-way dance). Skipped while ghosting (3s collision-breaker, managed in the separation pass) ----
+  if(ents&&!a.ghost){const goal=a.path[a.path.length-1],gd=Math.hypot(goal.x-a.x,goal.y-a.y);
+    if(gd<BODY){for(const o of ents)if(o!==a&&Math.hypot(o.x-goal.x,o.y-goal.y)<BODY){a.path=[];a.moving=false;return;}}  // someone's parked on my spot → settle beside them; separation does the spacing (no orbiting / butting in)
+    else{let near=null,nd=AVOID;
+      for(const o of ents){if(o===a||o.pri>=a.pri)continue;const ox=o.x-a.x,oy=o.y-a.y,od=Math.hypot(ox,oy);
+        if(od<0.001||od>=AVOID||(ox*ux+oy*uy)/od<0.2)continue;     // skip far-away / behind-me
+        if(od<nd){nd=od;near=o;}}                                   // the closest higher-ranked agent in my way
+      if(near){const ox=near.x-a.x,oy=near.y-a.y,nat=(ux*oy-uy*ox)>0?-1:1,   // natural side to peel off toward
+          freeSide=sd=>inObstacle(a.x-uy*sd*8,a.y+ux*sd*8,a.id,CLEAR)?0:sd,  // is that side clear of furniture?
+          sd=freeSide(nat)||freeSide(-nat);                          // prefer it; else the other side
+        if(sd){const k=(AVOID-nd)/AVOID*1.3,px=-uy*sd*k,py=ux*sd*k;ux+=px;uy+=py;const nl=Math.hypot(ux,uy)||1;ux/=nl;uy/=nl;}
+        else if(near.moving){a.moving=true;a.walk+=dt*0.12;return;}}}}  // boxed in a chokepoint + they're walking → hold and let them pass
+  const sp=a.speed*dt,step=Math.min(sp,d),nx=a.x+ux*step,ny=a.y+uy*step;
   if(!inObstacle(nx,ny,a.id,CLEAR)){a.x=nx;a.y=ny;}                 // path forward is clear
   else if(!inObstacle(nx,a.y,a.id,CLEAR)){a.x=nx;}                  // blocked → slide along the vertical face
   else if(!inObstacle(a.x,ny,a.id,CLEAR)){a.y=ny;}                  // or the horizontal face
@@ -920,17 +935,26 @@ function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first 
   if(standupUntil<time)standupPhase=null;
   // advance agents
   ensureAgents();buildObstacles();
-  roster.forEach(a=>{const e=A[a.id];if(e){think(e,time);moveAgent(e,dt);}});
-  updateFX(dt);
-  // separation — agents shouldn't stand inside each other
   const ents=roster.map(a=>A[a.id]).filter(Boolean);
+  roster.forEach(a=>{const e=A[a.id];if(e){think(e,time);moveAgent(e,dt,ents);}});
+  updateFX(dt);
+  // separation — agents shouldn't stand inside each other (avoidance in moveAgent does the heavy lifting)
   const shift=(e,mx,my)=>{const dirs=[[mx,my],[mx,0],[0,my],[-my,mx],[my,-mx],[-mx,-my]];   // try the ideal push, then fall back to any free direction
     for(const v of dirs){const nx=e.x+v[0],ny=e.y+v[1];if(nx>ENV.x+3&&nx<ENV.x+ENV.w-3&&ny>ENV.y+3&&ny<ENV.y+ENV.h-3&&!inObstacle(nx,ny,e.id,0)){e.x=nx;e.y=ny;return;}}};
-  for(let i=0;i<ents.length;i++)for(let j=i+1;j<ents.length;j++){const p=ents[i],q=ents[j];let dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
-    if(d>=9)continue;
-    if((p.moving||q.moving)&&d>5)continue;          // walkers pass at moderate range; only resolve SEVERE overlaps (stacking)
+  const touch=new Array(ents.length).fill(false);   // who is overlapping someone THIS frame → drives the 3s collision-breaker below
+  for(let i=0;i<ents.length;i++)for(let j=i+1;j<ents.length;j++){const p=ents[i],q=ents[j];
+    let dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
+    if(d>=BODY)continue;
+    touch[i]=touch[j]=true;                          // count the overlap even for ghosts, so a phasing agent keeps ghosting until it's fully clear
+    if(p.ghost||q.ghost)continue;                    // one of them is phasing through → don't push them apart
     if(d<0.001){const ang=i*2.39963;dx=Math.cos(ang);dy=Math.sin(ang);d=1;}   // exactly coincident → fan them out by index
-    const push=(9-d)/2,ux=dx/d,uy=dy/d;shift(p,-ux*push,-uy*push);shift(q,ux*push,uy*push);}
+    // shove the lower-ranked agent most so the higher-ranked one keeps its line (clean doorway/crossing resolution)
+    const tot=BODY-d,ux=dx/d,uy=dy/d,pw=p.pri>q.pri?0.85:0.15;shift(p,-ux*tot*pw,-uy*tot*pw);shift(q,ux*tot*(1-pw),uy*tot*(1-pw));}
+  // collision-breaker: overlapping anyone for 3s straight → ghost (pass through everyone) until no longer touching, then snap back to solid
+  const dtMs=dt*16.7;
+  for(let i=0;i<ents.length;i++){const e=ents[i];
+    if(touch[i]){e.collide=(e.collide||0)+dtMs;if(e.collide>3000)e.ghost=true;}
+    else{e.collide=0;e.ghost=false;}}
   // occasional chit-chat between two idle neighbours
   if(time>nextChat){for(let i=0;i<ents.length;i++){const p=ents[i];if(p.moving||agentBusyKind(p.id)!=='idle')continue;const q=ents.find((x,j)=>j!==i&&!x.moving&&Math.hypot(x.x-p.x,x.y-p.y)<22&&agentBusyKind(x.id)==='idle');if(q){p.face=q.x<p.x?-1:1;q.face=p.x<q.x?-1:1;p.bubble=pick(CHATTER);p.bubbleUntil=time+2600;nextChat=time+7000+Math.random()*9000;break;}}}
   // depth-sorted movable items (desks, plants, manager desk, people) — correct front/behind
