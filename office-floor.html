@@ -240,7 +240,7 @@ const busyLabel={architect:"ROUTING",client:"INTAKE",scoper:"SCOPING",taskwriter
 // (each with their own details + folder for rules/.md) via MANAGE.
 const DEFAULT_ROSTER=[
   {id:"architect",name:"Morgan Reyes",role:"Manager",model:"opus",color:COLORS.architect,folders:[]}];
-const CHATTER=["Coffee?","Big plan today.","See the memo?","P0 again?!","I love deadlines.","Need more hours.","Standup in 5.","It compiles!","Scope creep…","Bears. Beets.","Brilliant.","Back to my desk."];
+const CHATTER=["Coffee?","Big plan today.","See the memo?","P0 again?!","I love deadlines.","Need more hours.","Standup in 5.","It compiles!","Scope creep…","Bears. Beets.","Brilliant.","Back to my desk.","Nice weather, huh?","Did you ship it?","Lunch later?","New ticket dropped.","Whiteboard's full.","Any blockers?","Solid sprint.","One more pass.","Looks clean to me.","Who owns this?","Let's sync up.","Demo's looking good."];
 const STANDUP=["Let's plan this.","Who owns it?","Sizing it now.","Risk: high.","Day one…","Ship it.","Deps first."];
 const WIT_TASK=["{t}? almost.","still on {t}.","{t} won't ship itself.","deep in {t}.","{t}: so close.","wrangling {t}.","{t} again…"];
 const WIT_BUSY=["in the zone.","busy, busy.","another sprint…","coffee→code→repeat.","do not disturb 😅","heads down.","my calendar's a crime scene."];
@@ -557,6 +557,7 @@ const STAGEXP={plan:8, breakdown:14, review:10};
 function stageOf(t){const k=colOf(t.status);for(let i=0;i<COLS.length;i++)if(COLS[i].key===k)return i;return 0;}
 function gx(g,id,amt){id=id||'?';g.xp[id]=(g.xp[id]||0)+amt;g.score+=amt;return amt;}
 function scanDone(){const g=ensureGame();if(!activeProj)return;if(!g.seenProjects)g.seenProjects={};const now=performance.now()-t0,first=!g.seenProjects[activeProj];g.seenProjects[activeProj]=true;let gained=0;
+  const lvBefore={};roster.forEach(a=>lvBefore[a.id]=agentLevel(a.id));
   (state.tasks||[]).forEach(t=>{const o=t.owner||'?',key=activeProj+'/'+t.id;const cur=stageOf(t);const prev=(g.stage[key]===undefined)?-1:g.stage[key];
     if(cur<=prev)return;                                  // only reward forward progress; moving back never penalises
     if(first){g.stage[key]=cur;if(cur>=3&&g.doneIds.indexOf(key)<0)g.doneIds.push(key);return;}  // no retro XP when loading
@@ -567,9 +568,12 @@ function scanDone(){const g=ensureGame();if(!activeProj)return;if(!g.seenProject
       else if(s===2){gained+=gx(g,o,STAGEXP.review);roster.forEach(a=>{if(a.id!==o)gained+=gx(g,a.id,2);});pushHist(o,TID+' → review (estimate + timeline)');}  // Review — whole team
       else if(s===3){const base=10*(PW[t.priority]||2),combo=(now<g.comboUntil)?Math.min(8,g.combo+1):1;g.combo=combo;g.comboUntil=now+15000;
         gained+=gx(g,o,base*combo);pushHist(o,'finished '+TID+' — fully specified');if(g.doneIds.indexOf(key)<0)g.doneIds.push(key);
+        const p3=agentPos(o);spawnBurst(p3.x,p3.y-2,['#ffd34d','#46d6c0','#ff5fae','#7ee787'],16);spawnFloat(p3.x,p3.y-7,'+'+(base*combo),'#ffd34d');spawnRing(p3.x,p3.y-2,'#ffd34d');  // task-done juice
+        const rc=roster.filter(a=>a.id!==o&&A[a.id]&&agentBusyKind(a.id)==='idle');if(rc.length){const re=A[pick(rc).id];if(re){re.bubble=pick(REACTIONS);re.bubbleUntil=now+2600;}}                  // a teammate cheers
         const today=new Date().toISOString().slice(0,10);if(g.lastDoneDate!==today){g.streak=(g.lastDoneDate&&dayDiff(g.lastDoneDate,today)===1)?g.streak+1:1;g.lastDoneDate=today;}}
     }
     g.stage[key]=cur;});
+  if(!first)roster.forEach(a=>{const nl=agentLevel(a.id);if(nl>(lvBefore[a.id]||1)){const lp=agentPos(a.id);spawnRing(lp.x,lp.y-2,'#46d6c0');spawnRing(lp.x,lp.y-2,'#ffd34d');spawnFloat(lp.x,lp.y-9,'LEVEL '+nl+'!','#46d6c0');spawnBurst(lp.x,lp.y-2,['#46d6c0','#ffd34d','#fff'],22);const e=A[a.id];if(e){e.bubble='⭐ Level '+nl+'!';e.bubbleUntil=now+3000;}}});  // level-up celebration
   if(!first&&gained>0){g.flashTxt='+'+gained+(g.combo>1?'  x'+g.combo:'');g.flashUntil=now+1900;}
   if(gained>0||first)persistProjects();}
 function drawHat(cid,x,hy){const ty=hy-1;
@@ -628,10 +632,11 @@ function drawRoom(r){P(r.x,r.y,r.w,r.h,r.floor);
   P(r.x,r.y,3,r.h,shade(r.wall,1.12));P(r.x+r.w-3,r.y,3,r.h,shade(r.wall,0.8));P(r.x,r.y+r.h-3,r.w,3,shade(r.wall,0.72));
   door(r);}
 function drawRoomLabels(){for(const k in ROOMS){const r=ROOMS[k];const w=logicalWidth(r.label,6)+6;const lx=(k==='bullpen')?(r.x+r.w-w-4):(r.x+4);P(lx,r.y+1,w,7,shade(r.wall,0.7));txt(r.label,lx+2,r.y+1,"#f3efe2",6);}}  // bullpen label on the right so it doesn't sit over the gantt board
-function plant(x,y){shadowEll(x-1,y+11,9);
+function plant(x,y,time){shadowEll(x-1,y+11,9);
   P(x,y+6,6,6,shade("#7a4a2a",1.05));P(x,y+6,6,1,"#9a6a3a");P(x,y+11,6,1,"#3a2414");P(x+1,y+7,1,4,shade("#7a4a2a",1.3)); // terracotta pot + rim + sheen
-  P(x,y,7,3,"#2f6b40");P(x-1,y+2,9,3,"#3f7a4a");P(x+1,y+4,6,2,"#46915a");                                               // layered foliage
-  P(x+1,y-2,2,3,"#5fb070");P(x+4,y-1,2,2,"#5fb070");P(x-1,y+1,2,2,"#356b40");P(x+6,y+1,2,2,"#356b40");P(x+2,y-1,1,1,"#74c585");}
+  const sx=Math.round(Math.sin((time||0)/720+x*0.3));                                                                    // gentle leaf sway
+  P(x+sx,y,7,3,"#2f6b40");P(x-1,y+2,9,3,"#3f7a4a");P(x+1,y+4,6,2,"#46915a");                                            // layered foliage
+  P(x+1+sx,y-2,2,3,"#5fb070");P(x+4+sx,y-1,2,2,"#5fb070");P(x-1,y+1,2,2,"#356b40");P(x+6,y+1,2,2,"#356b40");P(x+2+sx,y-1,1,1,"#74c585");}
 function couch(x,y,col){col=col||"#3a4a6a";shadowEll(x,y+11,28);
   P(x,y-5,28,6,shade(col,1.22));P(x,y-5,28,1,shade(col,1.5));                       // backrest + top light
   P(x,y,28,9,col);P(x,y,28,1,shade(col,1.12));P(x,y+9,28,2,shade(col,0.5));         // seat + base
@@ -673,7 +678,9 @@ function drawWorkstation(dx,dy,id,busy,time){const s=genDeskStyle(id);
   if(busy){P(dx+9,dy-5,10,9,s.screen);P(dx+9,dy-5,10,1,"#ffffff66");
     P(dx+10,dy-4,3,1,"#10202a");P(dx+14,dy-4,4,1,"#10202a");P(dx+10,dy-2,5,1,"#10202a");P(dx+10,dy,3,1,"#10202a");P(dx+14,dy,3,1,"#10202a");P(dx+10,dy+2,4,1,"#10202a");
     P(dx+10+((Math.floor(time/250))%8),dy+3,1,1,"#ffffffcc");P(dx+18,dy+4,1,1,"#7ee787");}
-  else{P(dx+9,dy-5,10,9,"#161b22");P(dx+18,dy+4,1,1,"#5a2a2a");}
+  else{P(dx+9,dy-5,10,9,"#12161f");                                          // idle screen w/ drifting screensaver + scanline
+    const t2=Math.floor(time/430);P(dx+10+(t2%8),dy-4+((t2>>3)%6),1,1,"#27466a");
+    P(dx+9,dy-5+((Math.floor(time/130))%9),10,1,"#1b2433");P(dx+18,dy+4,1,1,"#5a2a2a");}
   P(dx+19,dy-3,2,2,"#ffd34d");                                                // sticky note on bezel
   // keyboard (mousepad + keys) + mouse
   P(dx+5,dy+8,14,1,"#2a2e36");P(dx+5,dy+9,14,2,"#cfd2da");for(let k=0;k<6;k++)P(dx+6+k*2,dy+9,1,1,"#9aa0aa");
@@ -701,6 +708,9 @@ function drawDecor(){
   cooler(444,160);                             // bullpen water cooler (top-right)
   for(let gx=363;gx<451;gx+=8)for(let gy=25;gy<98;gy+=8)P(gx,gy,7,7,(((gx/8|0)+(gy/8|0))%2)?"#525f69":"#48545e"); // WC floor tiles (below the back wall)
   [[44,11],[230,11],[300,11],[60,150],[300,150],[120,150]].forEach(p=>P(p[0],p[1],24,2,"rgba(255,250,220,.07)")); // ceiling lights
+  framedArt(96,151,15,9,"#3a5a8a",1);                                         // lounge wall — landscape
+  framedArt(150,151,16,9,"#6a4a7a",2);                                        // manager wall — abstract
+  framedArt(360,151,16,9,"#7a5a3a",3);                                        // bullpen wall — framed photo
   door(ROOMS.toilet);                                                         // re-open the WC doorway (tiles covered it)
 }
 function drawGanttBoard(){ // live mini-gantt board in the open-office left corner (click to open the full chart)
@@ -776,12 +786,18 @@ function drawTag(label,cx,topY,bg){const f=fitBox(label,76,6,5),w=f.w+4;let x=cx
 function drawBubble(text,cx,topY){const f=fitBox(text,110,6,4),w=f.w+6,bh=Math.max(9,f.sz+3);let x=cx-3;x=Math.max(1,Math.min(LOGW-w-1,x));let by=topY-bh;if(by<1)by=topY+12;P(x,by,w,bh,"#fff");P(x,by,w,1,"#caa05a");P(cx-1,by+bh,3,2,"#fff");txt(f.t,x+3,by+1,"#2a2118",f.sz);}
 function drawPerson(a,time){if(!a||!isFinite(a.x)||!isFinite(a.y))return;const id=a.id,app=(a.app&&a.app.shirt)?a.app:genApp({id:id,name:a.name}),shirt=app.shirt,hair=app.hair,skin=app.skin,
   dark="#1a120c",white="#f3efe2",pants="#33384a",shoe="#20180f";
-  const x=a.x,base=a.y,hy=base-30,working=a.state==='working'&&!a.moving;
+  const x=a.x,base=a.y,working=a.state==='working'&&!a.moving;
+  const seed=(hashStr(id)%1000)/1000;
+  let bob=0;
+  if(a.moving)bob=(((Math.sin(a.walk*2)+1)/2)>0.5)?-1:0;                 // 1px walk bounce
+  else if(working)bob=(Math.floor(time/280)%2)?0:-1;                     // gentle typing rock
+  const breathe=(!a.moving&&!working&&Math.sin(time/1100+seed*6)>0.7)?-1:0;
+  const hy=base-30+bob+breathe;                                          // body bobs; feet stay planted on base
   P(x-5,base-1,12,2,"rgba(0,0,0,.30)");                                  // grounded shadow
   const sw=Math.sin(a.walk||0);
-  // legs + shoes
-  if(a.moving){const off=Math.round(sw*2);P(x-4+off,hy+20,3,8,pants);P(x+1-off,hy+20,3,8,pants);P(x-5+off,hy+27,4,3,shoe);P(x-off,hy+27,4,3,shoe);}
-  else{P(x-4,hy+20,3,8,pants);P(x+1,hy+20,3,8,pants);P(x+1,hy+20,2,8,shade(pants,0.82));P(x-5,hy+27,4,3,shoe);P(x+1,hy+27,4,3,shoe);}
+  // legs + shoes (anchored to base so the torso/head bob above them)
+  if(a.moving){const off=Math.round(sw*2);P(x-4+off,base-10,3,8,pants);P(x+1-off,base-10,3,8,pants);P(x-5+off,base-3,4,3,shoe);P(x-off,base-3,4,3,shoe);}
+  else{P(x-4,base-10,3,8,pants);P(x+1,base-10,3,8,pants);P(x+1,base-10,2,8,shade(pants,0.82));P(x-5,base-3,4,3,shoe);P(x+1,base-3,4,3,shoe);}
   // torso + collar + shading + tie
   P(x-5,hy+12,11,9,shirt);P(x-5,hy+12,11,1,white);P(x-1,hy+12,2,2,white);
   P(x+4,hy+12,2,9,shade(shirt,0.75));P(x-5,hy+12,1,9,shade(shirt,1.2));
@@ -817,6 +833,43 @@ function drawPerson(a,time){if(!a||!isFinite(a.x)||!isFinite(a.y))return;const i
     drawTag(lbl,x,hy-9,tc);}
   if(a.bubble&&a.bubbleUntil>time)drawBubble(a.bubble,x,hy-3);}
 
+/* ---- juice: particles, floating text, rings ---- */
+let FX=[];
+function fxCap(){if(FX.length>150)FX.splice(0,FX.length-150);}
+function agentPos(id){const e=A[id];if(e&&isFinite(e.x))return {x:e.x,y:e.y-14};const h=LAYOUT.homes[id];return h?{x:h.fx,y:h.fy-14}:{x:LOGW/2,y:LOGH/2};}
+function spawnBurst(x,y,cols,n){n=n||14;for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,sp=0.4+Math.random()*1.5;FX.push({t:'c',x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-1.2,life:0,max:55+Math.random()*30,col:cols[i%cols.length],r:Math.random()<0.5?1:2});}fxCap();}
+function spawnFloat(x,y,str,col){FX.push({t:'f',x:x,y:y,vy:-0.4,life:0,max:72,str:str,col:col||'#46d6c0'});fxCap();}
+function spawnRing(x,y,col){FX.push({t:'r',x:x,y:y,life:0,max:30,col:col||'#ffd34d'});fxCap();}
+function updateFX(dt){for(let i=FX.length-1;i>=0;i--){const p=FX[i];p.life+=dt;if(p.t==='c'){p.vy+=0.07*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;}else if(p.t==='f'){p.y+=p.vy*dt;}if(p.life>=p.max)FX.splice(i,1);}}
+function drawFX(time){for(const p of FX){const k=1-p.life/p.max;
+  if(p.t==='c'){P(p.x,p.y,p.r,p.r,k>0.35?p.col:shade(p.col,0.7));}
+  else if(p.t==='f'){const fade=k<0.4?'a':'';txt(p.str,p.x-logicalWidth(p.str,6)/2,p.y,fade?shade(p.col,0.8):p.col,6);}
+  else if(p.t==='r'){const rr=p.life*0.7;ctx.strokeStyle=p.col;ctx.lineWidth=Math.max(1,SCALE*0.7);ctx.globalAlpha=Math.max(0,k);ctx.beginPath();ctx.arc(p.x*SCALE,p.y*SCALE,rr*SCALE,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}}}
+
+/* ---- ambient office life ---- */
+const REACTIONS=["🎉 Nice!","Shipped it!","👏","On a roll!","Clean spec.","Love it.","Big W.","Let's go!"];
+function steam(x,y,time,seed){for(let i=0;i<3;i++){const ph=((time/650)+i*0.34+seed)%1;const yy=y-ph*8,xx=x+Math.sin(time/320+i+seed*6)*1.3,a=((1-ph)*0.45).toFixed(2);P(xx,yy,1,1,"rgba(222,226,234,"+a+")");}}
+function wallClock(x,y){P(x-1,y-1,9,9,"#171c28");P(x,y,7,7,"#e9eef4");P(x,y,7,1,"#fff");const d=new Date(),cx=x+3.5,cy=y+3.5,
+  mn=(d.getMinutes()/60)*6.2832-1.5708,hr=(((d.getHours()%12)+d.getMinutes()/60)/12)*6.2832-1.5708;
+  ctx.strokeStyle="#33405e";ctx.lineWidth=SCALE;ctx.beginPath();
+  ctx.moveTo(cx*SCALE,cy*SCALE);ctx.lineTo((cx+Math.cos(hr)*1.7)*SCALE,(cy+Math.sin(hr)*1.7)*SCALE);
+  ctx.moveTo(cx*SCALE,cy*SCALE);ctx.lineTo((cx+Math.cos(mn)*2.6)*SCALE,(cy+Math.sin(mn)*2.6)*SCALE);ctx.stroke();
+  P(cx-0.5,cy-0.5,1,1,"#222");}
+function framedArt(x,y,w,h,col,scene){P(x-1,y-1,w+2,h+2,"#2a2014");P(x-1,y-1,w+2,1,"#4a3a22");P(x,y,w,h,col);
+  if(scene===1){P(x,y+h-2,w,2,"#2f6f4f");P(x+2,y+1,2,2,"#ffd34d");}                 // landscape + sun
+  else if(scene===2){for(let i=0;i<w-1;i+=2)P(x+i,y+1+((i/2|0)%2),1,h-2,shade(col,1.2));} // abstract stripes
+  else{P(x+1,y+1,w-2,h-2,shade(col,0.8));P(x+2,y+2,w-4,1,shade(col,1.3));}}
+function drawAmbient(time){
+  steam(287,58,time,0.10);            // breakroom coffee pot
+  steam(338,61,time,0.55);            // kitchen
+  steam(50,224,time,0.30);            // lounge table mug
+  // water-cooler bubble glugging up the bottle (bullpen cooler ~444,154)
+  if((Math.floor(time/520))%4===0)P(446,150+((Math.floor(time/180))%4),1,1,"rgba(150,220,240,.75)");
+  wallClock(148,10);                  // conference wall clock (right of the kanban board)
+}
+let _vig=null;
+function vignette(){if(!_vig){_vig=ctx.createRadialGradient(LOGW*SCALE/2,LOGH*SCALE*0.40,90,LOGW*SCALE/2,LOGH*SCALE/2,LOGW*SCALE*0.64);_vig.addColorStop(0,"rgba(0,0,0,0)");_vig.addColorStop(1,"rgba(0,0,0,0.30)");}ctx.fillStyle=_vig;ctx.fillRect(0,0,LOGW*SCALE,LOGH*SCALE);}
+
 /* ---- scene ---- */
 function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first so a throttled/hidden frame still keeps the loop alive
   if(document.hidden)return;                                 // window minimised/blurred → skip work entirely
@@ -840,6 +893,7 @@ function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first 
   // advance agents
   ensureAgents();buildObstacles();
   roster.forEach(a=>{const e=A[a.id];if(e){think(e,time);moveAgent(e,dt);}});
+  updateFX(dt);
   // separation — agents shouldn't stand inside each other
   const ents=roster.map(a=>A[a.id]).filter(Boolean);
   for(let i=0;i<ents.length;i++)for(let j=i+1;j<ents.length;j++){const p=ents[i],q=ents[j];let dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);if(d<0.001){dx=1;dy=0;d=1;}if(d<9){const push=(9-d)/2;let ux=dx/d,uy=dy/d;
@@ -851,17 +905,20 @@ function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first 
   const items=[];
   roster.filter(a=>a.id!=='architect'&&a.id!=='client').forEach(a=>{const d=LAYOUT.desks[a.id];if(!d)return;const busy=activeAgent===a.id||(busyUntil[a.id]||0)>time||(busyWork[a.id]||0)>time;items.push({y:d.dy,draw:()=>drawWorkstation(d.dx,d.dy,a.id,busy,time)});});  // sort by desk top so the person (in front) draws over it
   items.push({y:226,draw:()=>bigdesk(152,212)});
-  [{x:118,y:240},{x:206,y:240},{x:12,y:120},{x:450,y:120}].forEach(p=>items.push({y:p.y+10,draw:()=>plant(p.x,p.y)}));
+  [{x:118,y:240},{x:206,y:240},{x:12,y:120},{x:450,y:120}].forEach(p=>items.push({y:p.y+10,draw:()=>plant(p.x,p.y,time)}));
   roster.forEach(a=>{const e=A[a.id];if(e)items.push({y:e.y,draw:()=>drawPerson(e,time)});});
   // boards as depth items (bottom edge) — a person standing in front (higher y) draws over them, incl. their bubble
   items.push({y:WB.y+WB.h,draw:drawWhiteboard});
   items.push({y:GBD.y,draw:drawGanttBoard});   // sort by its top so it stays on the wall, behind the desks/people in front
   items.sort((p,q)=>p.y-q.y);items.forEach(it=>{try{it.draw();}catch(e){}});
+  drawAmbient(time);                 // steam, clock, cooler bubble — above the furniture
+  vignette();                        // soft corner falloff for depth (scene only; HUD/cards stay bright)
   // room labels on top so furniture never hides them
   drawRoomLabels();
   // task cards in flight
   updateCards(time,dt);
   Object.values(cards).forEach(c=>{if(c.phase==='toDesk'||c.phase==='working'||c.phase==='toBoard'){P(c.x+NOTEW/2-1,c.y+NOTEH+1,3,2,"rgba(0,0,0,.3)");drawNote(c.x,c.y,c.task,c.phase!=='working');}});
+  drawFX(time);                      // confetti / floating XP / level-up rings on top of the scene
   if(standupUntil>time){const t='● STANDUP';const w=logicalWidth(t,6)+8;P(LOGW/2-w/2,LOGH-12,w,10,"#46d6c0");txt(t,LOGW/2-w/2+4,LOGH-10,"#06120f",6);}
   else if(planning){const t='● NOW PLANNING…';const w=logicalWidth(t,6)+8;P(LOGW/2-w/2,LOGH-12,w,10,"#2d3f63");txt(t,LOGW/2-w/2+4,LOGH-10,"#ffd34d",6);}
   }catch(e){}}
