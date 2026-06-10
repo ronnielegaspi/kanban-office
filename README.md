@@ -5,6 +5,21 @@ A **Client** files a feature request; the **Architect** scopes it; design, Unrea
 simulation specialists weigh in; the team breaks it down, sets priorities, writes a spec
 document, and the plan plays out on an animated **office floor with a whiteboard**.
 
+## Download Kanban Office (desktop app)
+
+The desktop app (Kanban Office) bundles the floor + whiteboard and runs Claude Code on your
+own account. Pick the build for your machine — links always point to the **latest release**:
+
+| Build | Windows on ARM (Snapdragon / Surface) | Windows Intel / AMD (x64) |
+| --- | --- | --- |
+| **Installer** (recommended — auto-updates) | [KanbanOffice-Setup.exe](https://github.com/ronnielegaspi/kanban-office/releases/latest/download/KanbanOffice-Setup.exe) | [KanbanOffice-Setup-x64.exe](https://github.com/ronnielegaspi/kanban-office/releases/latest/download/KanbanOffice-Setup-x64.exe) |
+| **Portable** (no install — unzip & run `Kanban Office.exe`) | [KanbanOffice-Portable-arm64.zip](https://github.com/ronnielegaspi/kanban-office/releases/latest/download/KanbanOffice-Portable-arm64.zip) | [KanbanOffice-Portable-x64.zip](https://github.com/ronnielegaspi/kanban-office/releases/latest/download/KanbanOffice-Portable-x64.zip) |
+
+Not sure which? Most new Windows laptops marketed as "Copilot+ PCs" / Snapdragon are **ARM**;
+traditional Intel/AMD desktops and laptops are **x64**. The installer adds a desktop shortcut
+and updates itself; the portable build leaves no footprint. All builds need Claude Code
+installed (see Prerequisite below). · [All releases & changelogs](https://github.com/ronnielegaspi/kanban-office/releases)
+
 ```
 User ─► Client (files request + priority)
             │

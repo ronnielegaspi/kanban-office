@@ -174,7 +174,6 @@
       <button class="gbtn gold" id="notesBtn">NOTES</button>
       <button class="gbtn gold" id="termBtn">▶ TERMINAL</button>
       <button class="gbtn gold" id="rtBtn">🗣️ ROUNDTABLE</button>
-      <button class="gbtn" id="autoBtn">AUTO-FLOW</button>
       <button class="gbtn" id="optBtn">⚙ OPTIONS</button>
     </div>
   </header>
@@ -259,13 +258,13 @@ function syncActive(){if(activeProj){const pd=projData[activeProj]||(projData[ac
 function projName(id){const p=projects.find(x=>x.id===(id||activeProj));return p?p.name:'—';}
 function persistProjects(){syncActive();if(ELECTRON&&window.munder.saveProjects)window.munder.saveProjects({projects,active:activeProj,data:projData,baseRoster:roster,game:gameState});}
 function switchProject(id){if(!id||id===activeProj)return;syncActive();activeProj=id;let pd=projData[id];if(!pd)pd=projData[id]={state:emptyState(projName(id))};state=pd.state;ensureAgents();cards={};applyState(state);renderRoster();if(ELECTRON&&window.munder.saveState)window.munder.saveState({state});persistProjects();}  // roster stays shared — the team never changes between projects
-function createProject(name,color,context,links){const id='p'+Date.now().toString(36);const nm=name||('Project '+(projects.length+1));projects.push({id,name:nm,color:color||'#46d6c0'});
+function createProject(name,color,context,links,devs){const id='p'+Date.now().toString(36);const nm=name||('Project '+(projects.length+1));projects.push({id,name:nm,color:color||'#46d6c0',devs:Math.max(1,parseInt(devs,10)||specialistCount())});
   projData[id]={state:emptyState(nm)};if(context&&context.trim())projData[id].context=context.trim();if(links&&links.length)projData[id].links=links;persistProjects();switchProject(id);}  // new project = new tasks only; the shared team carries over
 function openEditProject(pid){const p=projects.find(x=>x.id===pid);if(!p)return;const pd=projData[pid]||(projData[pid]={state:emptyState(p.name)});const linksArr=pd.links||(pd.links=[]);
-  const commitFields=()=>{const n=document.getElementById('epName');if(n)p.name=n.value.trim()||p.name;const c=document.getElementById('epColor');if(c)p.color=c.value;const x=document.getElementById('epCtx');if(x)pd.context=x.value;if(pid===activeProj)state.project=p.name;};
+  const commitFields=()=>{const n=document.getElementById('epName');if(n)p.name=n.value.trim()||p.name;const c=document.getElementById('epColor');if(c)p.color=c.value;const x=document.getElementById('epCtx');if(x)pd.context=x.value;const dv=document.getElementById('epDevs');if(dv)p.devs=Math.max(1,parseInt(dv.value,10)||1);if(pid===activeProj)state.project=p.name;};
   const linkHtml=linksArr.length?linksArr.map((l,i)=>'<div class="f2" style="display:flex;gap:6px;align-items:center;margin:2px 0"><span class="chip" style="background:#36b07a">link</span><a href="#" class="lnopen" data-u="'+esc(l.url)+'" style="flex:1;color:var(--teal);font-size:13px;word-break:break-all">'+esc(l.label||l.url)+'</a><button class="mini red lnrm" data-i="'+i+'">✕</button></div>').join(''):'<div class="why">no links yet</div>';
   openModal('EDIT PROJECT',
-    '<div class="kv"><b>NAME</b></div><input class="f" id="epName" value="'+esc(p.name)+'"/><div class="row2" style="margin-top:6px"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">COLOR</b><input class="f" id="epColor" type="color" value="'+esc(p.color||'#46d6c0')+'" style="width:40px;padding:1px"/></div>'+
+    '<div class="kv"><b>NAME</b></div><input class="f" id="epName" value="'+esc(p.name)+'"/><div class="row2" style="margin-top:6px"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">COLOR</b><input class="f" id="epColor" type="color" value="'+esc(p.color||'#46d6c0')+'" style="width:40px;padding:1px"/><b style="font-family:Silkscreen;font-size:8px;color:var(--teal);margin-left:10px">DEVS</b><input class="f" id="epDevs" type="number" min="1" value="'+projDevs(pid)+'" style="width:54px"/></div><div class="why" style="margin:2px 0 0">developers available — sizes the Gantt &amp; flags burnout</div>'+
     '<div class="kv" style="margin-top:6px"><b>CONTEXT</b> <span class="why" style="margin:0">the team uses this when planning</span></div><textarea id="epCtx" rows="4" placeholder="what this product/project is, goals, constraints">'+esc(pd.context||'')+'</textarea>'+
     '<div class="sect" style="margin-top:8px">REFERENCE LINKS — docs / task boards</div>'+linkHtml+'<div class="row2"><input class="f" id="lnLabel" placeholder="label" style="flex:1"/><input class="f" id="lnUrl" placeholder="https://…" style="flex:1.5"/><button class="mini" id="lnAdd">+ LINK</button></div>'+
     '<div class="row2" style="margin-top:8px"><button class="mini gold" id="epSave">SAVE</button><button class="mini" id="epBack">‹ PROJECTS</button> <span id="epStatus" style="font-size:13px;color:var(--ink-soft)"></span></div>');
@@ -276,10 +275,10 @@ function openEditProject(pid){const p=projects.find(x=>x.id===pid);if(!p)return;
   mbody.querySelectorAll('.lnopen').forEach(a=>a.onclick=e=>{e.preventDefault();const u=a.getAttribute('data-u');if(ELECTRON&&window.munder.openExternal)window.munder.openExternal(u);else window.open(u,'_blank');});}
 function deleteProject(id){if(projects.length<1)return;projects=projects.filter(p=>p.id!==id);delete projData[id];if(activeProj===id){activeProj=(projects[0]&&projects[0].id)||null;const pd=activeProj?projData[activeProj]:null;state=pd?pd.state:emptyState('—');ensureAgents();cards={};applyState(state);renderRoster();}persistProjects();}
 function sw(id){const p=projects.find(x=>x.id===id);return p?p.color:'#46d6c0';}
-function openCreateProject(){openModal('NEW PROJECT','<div class="kv"><b>NAME</b></div><input class="f" id="pjName" placeholder="e.g. Mobile App"/><div class="row2" style="margin-top:6px"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">COLOR</b><input class="f" id="pjColor" type="color" value="#46d6c0" style="width:40px;padding:1px"/></div><div class="kv" style="margin-top:6px"><b>CONTEXT</b> <span class="why" style="margin:0">the team uses this when planning</span></div><textarea id="pjCtx" rows="3" placeholder="what this product/project is, goals, constraints"></textarea><div class="kv" style="margin-top:6px"><b>REFERENCE LINKS</b> <span class="why" style="margin:0">one per line — "label | https://…"</span></div><textarea id="pjLinks" rows="2" placeholder="Design doc | https://...&#10;Task board | https://..."></textarea><div class="why" style="margin-top:6px">Each project keeps its own tasks (kanban); the team is shared. Edit context &amp; links later in PROJECTS.</div><div class="row2"><button class="mini gold" id="pjCreate">CREATE PROJECT ▸</button></div>');
-  document.getElementById('pjCreate').onclick=()=>{const n=document.getElementById('pjName').value.trim()||('Project '+(projects.length+1));const c=document.getElementById('pjColor').value;const ctx=document.getElementById('pjCtx').value;
+function openCreateProject(){openModal('NEW PROJECT','<div class="kv"><b>NAME</b></div><input class="f" id="pjName" placeholder="e.g. Mobile App"/><div class="row2" style="margin-top:6px"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">COLOR</b><input class="f" id="pjColor" type="color" value="#46d6c0" style="width:40px;padding:1px"/><b style="font-family:Silkscreen;font-size:8px;color:var(--teal);margin-left:10px">DEVS</b><input class="f" id="pjDevs" type="number" min="1" value="'+specialistCount()+'" style="width:54px"/></div><div class="why" style="margin:2px 0 0">developers available — sizes the Gantt &amp; flags burnout</div><div class="kv" style="margin-top:6px"><b>CONTEXT</b> <span class="why" style="margin:0">the team uses this when planning</span></div><textarea id="pjCtx" rows="3" placeholder="what this product/project is, goals, constraints"></textarea><div class="kv" style="margin-top:6px"><b>REFERENCE LINKS</b> <span class="why" style="margin:0">one per line — "label | https://…"</span></div><textarea id="pjLinks" rows="2" placeholder="Design doc | https://...&#10;Task board | https://..."></textarea><div class="why" style="margin-top:6px">Each project keeps its own tasks (kanban); the team is shared. Edit context &amp; links later in PROJECTS.</div><div class="row2"><button class="mini gold" id="pjCreate">CREATE PROJECT ▸</button></div>');
+  document.getElementById('pjCreate').onclick=()=>{const n=document.getElementById('pjName').value.trim()||('Project '+(projects.length+1));const c=document.getElementById('pjColor').value;const ctx=document.getElementById('pjCtx').value;const dv=document.getElementById('pjDevs').value;
     const links=document.getElementById('pjLinks').value.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const i=l.indexOf('|');return i>=0?{label:l.slice(0,i).trim(),url:l.slice(i+1).trim()}:{label:l,url:l};});
-    closeModal();createProject(n,c,ctx,links);openPanel('board');};}
+    closeModal();createProject(n,c,ctx,links,dv);openPanel('board');};}
 function projContext(){const pd=projData[activeProj]||{};let s='';if(pd.context&&pd.context.trim())s+='\n\nProject context: '+pd.context.trim();if(pd.links&&pd.links.length)s+='\nRelated docs/boards: '+pd.links.map(l=>(l.label||l.url)+' — '+l.url).join(' ; ');return s;}
 function allProjectsContext(){if(!projects.length)return '';let s='\n\nOffice portfolio (all projects):';projects.forEach(p=>{const pd=projData[p.id]||{};s+='\n- '+p.name+(p.id===activeProj?' (current)':'')+(pd.context&&pd.context.trim()?': '+pd.context.trim().slice(0,200):'');});return s;}
 function openNotes(){if(!activeProj){openCreateProject();return;}cleanupSpecialistNotes();const pd=projData[activeProj]||(projData[activeProj]={});const notes=pd.notes||(pd.notes=[]);pd.noteNew=0;noteBadge();
@@ -330,17 +329,66 @@ function openProjects(){const rows=projects.map(p=>{const ctx=(projData[p.id]&&p
   mbody.querySelectorAll('.pjdel').forEach(b=>b.onclick=()=>{deleteProject(b.closest('[data-id]').getAttribute('data-id'));openProjects();});
   document.getElementById('pjNew').onclick=openCreateProject;}
 const GCW=32, GNAMEW=300, DAYMS=86400000;
+function specialistCount(){return Math.max(1,roster.filter(a=>a.id!=='architect'&&a.id!=='client').length);}
+// developer count lives on the PROJECT record (app-owned) so a planning run rewriting office-state.json can't wipe it
+function projDevs(pid){const p=projects.find(x=>x.id===(pid||activeProj));const n=p&&p.devs;return Math.max(1,(n!==undefined&&n!==null&&n!=='')?(parseInt(n,10)||1):specialistCount());}
+function durDaysOf(t,cap){return Math.max(1,Math.round(t.durationDays||Math.ceil((t.estimateHours||cap)/cap)));}
+const PLAN_VERSION=3;   // bump when the scheduler logic changes → forces a one-time re-balance of saved plans
+// read-only health of the CURRENT schedule → drives the capacity bar. ~90% load = efficient; burnout comes from HARD tasks stacked on one dev
+function planMetrics(tasks,N,cap){if(!tasks.length)return {devs:N,makespan:0,load:0,tasks:0,perDev:0,maxStreak:0,recDevs:N,burnout:false};
+  const dur=t=>durDaysOf(t,cap),sd=t=>Math.max(1,Math.round(t.startDay||t.day||1)),en=t=>sd(t)+dur(t)-1;
+  const makespan=Math.max(1,...tasks.map(en)),work=tasks.reduce((s,t)=>s+dur(t),0),load=Math.round(work/(N*makespan)*100);
+  const mean=work/tasks.length;   // "hard" task = longer than the average task
+  const byLane={};tasks.forEach(t=>{const k=t.lane==null?0:t.lane;(byLane[k]=byLane[k]||[]).push(t);});
+  let maxStreak=0;Object.values(byLane).forEach(list=>{list.sort((a,b)=>sd(a)-sd(b));let run=0;list.forEach(t=>{if(dur(t)>mean){run++;if(run>maxStreak)maxStreak=run;}else run=0;});});  // longest back-to-back run of hard tasks on any one developer
+  const byId={};tasks.forEach(t=>byId[t.id]=t);const memo={};
+  const cpath=t=>{if(memo[t.id]!=null)return memo[t.id];let base=0;(t.deps||[]).forEach(d=>{if(byId[d])base=Math.max(base,cpath(byId[d]));});return memo[t.id]=base+dur(t);};
+  const critical=Math.max(1,...tasks.map(cpath));                                    // longest dependency chain = the floor on schedule length
+  const recDevs=Math.max(1,Math.min(tasks.length,Math.round(work/(0.9*critical))));  // dev count that lands load ≈ 90%
+  return {devs:N,makespan,load,tasks:tasks.length,perDev:Math.round(tasks.length/N*10)/10,maxStreak,recDevs,burnout:maxStreak>=3||load>95};}
+// the Manager finalises the plan: schedule tasks onto N developer lanes — priority first, then interleave easy/hard so no dev grinds through hard tasks back-to-back (burnout), packing for ~90% load
+function finalizePlan(st,N){st=st||state;const cap=st.capacityHoursPerDay||6;N=Math.max(1,N||projDevs());const tasks=(st.tasks||[]).slice();
+  if(!tasks.length)return null;const byId={};tasks.forEach(t=>byId[t.id]=t);
+  const PR={P0:0,P1:1,P2:2,P3:3},dur=t=>durDaysOf(t,cap);
+  const mean=tasks.reduce((s,t)=>s+dur(t),0)/tasks.length,hard=t=>dur(t)>mean;   // "hard" = longer than the average task
+  const lanes=Array.from({length:N},()=>({free:1,lastHard:false})),endDay={},done=new Set();
+  const depsReady=t=>(t.deps||[]).every(d=>!byId[d]||done.has(d));                              // all this task's deps are already scheduled
+  const depEndOf=t=>{let e=1;(t.deps||[]).forEach(d=>{if(endDay[d]!=null)e=Math.max(e,endDay[d]+1);});return e;};   // earliest day this task could begin
+  let guard=0;
+  while(done.size<tasks.length&&guard++<tasks.length+2){
+    let li=0;for(let i=1;i<N;i++)if(lanes[i].free<lanes[li].free)li=i;const L=lanes[li];     // the developer free earliest picks next
+    let ready=tasks.filter(t=>!done.has(t.id)&&depsReady(t));if(!ready.length)ready=tasks.filter(t=>!done.has(t.id));  // cycle → ignore deps
+    let pool=ready.filter(t=>depEndOf(t)<=L.free),waiting=false;   // tasks this dev can START NOW → so a free dev grabs available work instead of idling behind a blocked high-priority task
+    if(!pool.length){pool=ready;waiting=true;}                     // nothing startable yet → take the task that frees up soonest (unavoidable wait)
+    pool.sort((a,b)=>{ if(waiting){const dd=depEndOf(a)-depEndOf(b);if(dd)return dd;}          // when waiting, prefer the soonest-available
+      const pd=(PR[a.priority]??9)-(PR[b.priority]??9);if(pd)return pd;                         // then priority
+      const ah=hard(a),bh=hard(b);if(ah!==bh)return L.lastHard?(ah?1:-1):(ah?-1:1);             // tired dev → easier next; fresh dev → harder next
+      return dur(b)-dur(a)||String(a.id).localeCompare(b.id);});
+    const t=pool[0],d=dur(t),start=Math.max(L.free,depEndOf(t));
+    t.startDay=start;t.day=start;t.durationDays=d;t.lane=li;endDay[t.id]=start+d-1;L.free=endDay[t.id]+1;L.lastHard=hard(t);done.add(t.id);}
+  tasks.forEach(t=>{if(!done.has(t.id)){t.startDay=Math.max(1,t.startDay||1);t.day=t.startDay;t.durationDays=dur(t);}});  // safety net
+  st._plan=planMetrics(tasks,N,cap);st._plan.at=Date.now();st._plan.v=PLAN_VERSION;return st._plan;}
 function openGantt(){
   let gfilter=ganttFilter; if(gfilter!=='all'&&!projects.find(p=>p.id===gfilter))gfilter=activeProj;
   const baseProj=gfilter==='all'?activeProj:gfilter;
   const bpState=(baseProj===activeProj)?state:((projData[baseProj]&&projData[baseProj].state)||state);
-  const cap=bpState.capacityHoursPerDay||6;
+  const cap=bpState.capacityHoursPerDay||6,nDev=projDevs(baseProj);
+  // auto-balance the schedule across the developers when it hasn't been done for the current dev count (e.g. after a replan wiped the plan, or you changed the dev count) — keeps manual drags once balanced
+  if(gfilter!=='all'&&(bpState.tasks||[]).length&&(!bpState._plan||bpState._plan.devs!==nDev||bpState._plan.v!==PLAN_VERSION)){finalizePlan(bpState,nDev);persistProjects();}
   let entries=[];
   if(gfilter==='all')projects.forEach(p=>(projTasksOf(p.id)||[]).forEach(t=>entries.push({t,pid:p.id})));
   else (projTasksOf(gfilter)||[]).forEach(t=>entries.push({t,pid:gfilter}));
+  const PRG={P0:0,P1:1,P2:2,P3:3},sdg=t=>Math.max(1,Math.round(t.startDay||t.day||1));
+  entries.sort((a,b)=>sdg(a.t)-sdg(b.t)||((PRG[a.t.priority]??9)-(PRG[b.t.priority]??9))||String(a.t.id).localeCompare(b.t.id));  // read top→bottom in schedule order
   const tasks=entries.map(e=>e.t);
   const sdOf=t=>Math.max(1,Math.round(t.startDay||t.day||1));
   const durOf=t=>Math.max(1,Math.round(t.durationDays||Math.ceil((t.estimateHours||cap)/cap)));
+  const metrics=planMetrics(tasks,nDev,cap);
+  let health;if(metrics.burnout)health='<b style="color:#ff5147">⚠ burnout risk'+(metrics.maxStreak>=3?' — '+metrics.maxStreak+' hard tasks stacked on one dev':' — over capacity')+'</b>';
+  else if(metrics.load>=75)health='<b style="color:#3fbf7d">✓ efficient</b>';
+  else health='<b style="color:#e0962f">under-utilized — could free a dev</b>';
+  const rec=(metrics.recDevs!==nDev)?(' · sweet spot ≈ <b>'+metrics.recDevs+'</b> dev'+(metrics.recDevs>1?'s':'')+' for ~90% load'):'';
+  const sumHtml=tasks.length?('Capacity: <b>'+nDev+'</b> dev'+(nDev>1?'s':'')+' · '+metrics.tasks+' task'+(metrics.tasks>1?'s':'')+' ('+metrics.perDev+'/dev) · load <b>'+metrics.load+'%</b> · '+metrics.makespan+'d span · '+health+rec):'No tasks to schedule yet.';
   const pad=n=>String(n).padStart(2,'0');
   const base=bpState.startDate?new Date(bpState.startDate+'T00:00:00'):new Date(); base.setHours(0,0,0,0);
   const dateAt=d=>{const x=new Date(base);x.setDate(x.getDate()+(d-1));return x;};
@@ -357,23 +405,32 @@ function openGantt(){
   // task rows with absolute draggable bars
   let rows='';
   tasks.forEach((t,i)=>{const sd=sdOf(t),dur=durOf(t),col=PCOL[t.priority]||'#888',end=dateAt(sd+dur-1);
+    const deps=(t.deps||[]).filter(d=>tasks.some(x=>x.id===d));   // real, in-project dependencies that gate this task's start
+    const depNote=deps.length?' <span style="color:#ff9b3d;font-size:11px" title="blocked until these finish">⤷ after '+deps.map(d=>esc(d.toUpperCase())).join(', ')+'</span>':'';
     const today=(todayDay>=1&&todayDay<=N)?'<div class="gtoday" style="left:'+((todayDay-1)*GCW)+'px"></div>':'';
     rows+='<div class="grow">'
       +'<div class="gnm" style="width:'+GNAMEW+'px">'
-        +'<div class="t">'+(gfilter==='all'?'<span class="kc-owner" style="background:'+sw(entries[i].pid)+'">'+esc((projName(entries[i].pid)||'').slice(0,8))+'</span> ':'')+'<span class="kc-owner" style="background:'+ownerColor(t.owner)+'">'+esc(ownerName(t.owner))+'</span> <b>'+esc((t.id||'').toUpperCase())+'</b> '+esc(t.title||'')+'</div>'
+        +'<div class="t">'+(gfilter==='all'?'<span class="kc-owner" style="background:'+sw(entries[i].pid)+'">'+esc((projName(entries[i].pid)||'').slice(0,8))+'</span> ':'')+'<span class="kc-owner" style="background:hsl('+(((t.lane||0)*67)%360)+',55%,42%)" title="Developer '+((t.lane||0)+1)+'">DEV '+((t.lane||0)+1)+'</span> <span class="kc-owner" style="background:'+ownerColor(t.owner)+'" title="discipline">'+esc(ownerName(t.owner))+'</span> <b>'+esc((t.id||'').toUpperCase())+'</b> '+esc(t.title||'')+depNote+'</div>'
         +'<div class="e"><input class="dt" type="date" value="'+iso(dateAt(sd))+'" data-i="'+i+'" data-k="start" title="start date"><span style="color:var(--ink-soft)">→</span><input class="dt" type="date" value="'+iso(end)+'" data-i="'+i+'" data-k="end" title="due date"><input class="dy" type="number" min="1" value="'+dur+'" data-i="'+i+'" data-k="days" title="duration (days)"><span class="est">'+(t.estimateHours||'?')+'h · '+(t.priority||'')+'</span></div>'
       +'</div>'
       +'<div class="gtrack" style="width:'+(N*GCW)+'px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent '+(GCW-1)+'px,var(--line) '+(GCW-1)+'px,var(--line) '+GCW+'px)">'+today
-        +'<div class="gbar" data-i="'+i+'" style="left:'+((sd-1)*GCW)+'px;width:'+(dur*GCW)+'px;background:'+col+'"><span class="gblbl">'+dur+'d</span><div class="ghandle"></div></div>'
+        +'<div class="gbar" data-i="'+i+'" title="Developer '+((t.lane||0)+1)+'" style="left:'+((sd-1)*GCW)+'px;width:'+(dur*GCW)+'px;background:'+col+'"><span class="gblbl">D'+((t.lane||0)+1)+' · '+dur+'d</span><div class="ghandle"></div></div>'
       +'</div></div>';});
   if(!tasks.length)rows='<div class="grow"><div class="gnm" style="width:100%;padding:16px">No tasks in this project yet — file a request, or add tasks on the board.</div></div>';
   const fopts='<option value="all"'+(gfilter==='all'?' selected':'')+'>All projects</option>'+projects.map(p=>'<option value="'+p.id+'"'+(gfilter===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('');
   openModal('GANTT — '+(gfilter==='all'?'All projects':projName(gfilter)),
-    '<div class="gbar2"><span style="font-size:13px;color:var(--ink-soft)">Project</span><select class="f" id="gFilter" style="width:auto">'+fopts+'</select><span style="font-size:13px;color:var(--ink-soft)">Start</span><input class="f" type="date" id="gStart" value="'+iso(base)+'" style="width:auto"'+(gfilter==='all'?' disabled':'')+'><span class="why">Drag a bar to move it · drag its right edge to resize · or edit the dates &amp; duration. Saves automatically.</span></div>'
+    '<div class="gbar2"><span style="font-size:13px;color:var(--ink-soft)">Project</span><select class="f" id="gFilter" style="width:auto">'+fopts+'</select>'
+    +'<span style="font-size:13px;color:var(--ink-soft)">Devs</span><input class="f" type="number" min="1" id="gDevs" value="'+nDev+'" style="width:54px"'+(gfilter==='all'?' disabled title="per-project — pick one project"':'')+'>'
+    +'<span style="font-size:13px;color:var(--ink-soft)">Start</span><input class="f" type="date" id="gStart" value="'+iso(base)+'" style="width:auto"'+(gfilter==='all'?' disabled':'')+'>'
+    +'<button class="mini gold" id="gFinal"'+((gfilter==='all'||!tasks.length)?' disabled':'')+'>⚡ FINALIZE PLAN</button>'
+    +'<span class="why">Manager packs tasks onto the developers by priority &amp; dependencies. Drag bars to tweak.</span></div>'
+    +'<div class="gbar2" id="gSummary" style="font-size:13px;color:var(--ink-soft)">'+sumHtml+'</div>'
     +'<div class="gwrap"><div class="ggrid"><div class="ghead">'+head+'</div>'+rows+'</div></div>',true);
   const commit=()=>{syncActive();if(ELECTRON&&window.munder.saveState){try{window.munder.saveState({state});}catch(e){}}applyState(state);persistProjects();openGantt();};
   const gf=document.getElementById('gFilter'); if(gf)gf.onchange=e=>{ganttFilter=e.target.value;openGantt();};
   const gs=document.getElementById('gStart'); if(gs)gs.onchange=e=>{if(e.target.value){bpState.startDate=e.target.value;commit();}};
+  const gd=document.getElementById('gDevs'); if(gd)gd.onchange=e=>{const v=Math.max(1,parseInt(e.target.value,10)||1),p=projects.find(x=>x.id===baseProj);if(p)p.devs=v;finalizePlan(bpState,v);commit();};   // changing capacity re-balances the plan across all devs
+  const gfin=document.getElementById('gFinal'); if(gfin)gfin.onclick=()=>{finalizePlan(bpState,nDev);commit();};
   // date / duration inputs
   mbody.querySelectorAll('.gnm .e input').forEach(inp=>inp.onchange=()=>{const t=tasks[+inp.getAttribute('data-i')];if(!t)return;const k=inp.getAttribute('data-k');
     if(k==='days'){t.durationDays=Math.max(1,parseInt(inp.value,10)||1);}
@@ -477,13 +534,16 @@ function doorOf(x,y){const r=roomAt(x,y);return r?ROOMS[r].door:null;}
 // a point just inside the room from its door, clear of the back wall + any wall-mounted board
 function doorInside(door,roomKey){const r=ROOMS[roomKey];if(!r)return {x:door.x,y:door.y};const topEdge=Math.abs(door.y-r.y)<8;return {x:door.x,y:topEdge?door.y+WALLH+12:door.y-10};}  // lower rooms: clear the back wall + gantt; upper rooms: just step in (no wall there, and the table is deeper)
 function routeTo(a,tx,ty){const f=freePoint(tx,ty,a.id);tx=f.x;ty=f.y;
-  const sRoom=roomAt(a.x,a.y),dRoom=roomAt(tx,ty);
-  if(sRoom===dRoom){a.path=[{x:tx,y:ty}];return;}                  // same room (or both in the corridor) → go direct, sliding around furniture
-  const sd=sRoom?ROOMS[sRoom].door:null,dd=dRoom?ROOMS[dRoom].door:null,pts=[];
-  if(sd){const si=doorInside(sd,sRoom);pts.push({x:si.x,y:si.y},{x:sd.x,y:sd.y},{x:sd.x,y:CORRY});}else pts.push({x:a.x,y:CORRY});  // exit straight out through the doorway
-  pts.push({x:(dd?dd.x:tx),y:CORRY});                               // travel along the corridor
-  if(dd){const di=doorInside(dd,dRoom);pts.push({x:dd.x,y:dd.y},{x:di.x,y:di.y});}                                                // enter straight in through the doorway
-  pts.push({x:tx,y:ty});a.path=pts;}
+  const sRoom=roomAt(a.x,a.y),dRoom=roomAt(tx,ty),pts=[];
+  if(sRoom===dRoom){pts.push({x:tx,y:ty});}                        // same room (or both in the corridor)
+  else{const sd=sRoom?ROOMS[sRoom].door:null,dd=dRoom?ROOMS[dRoom].door:null;
+    if(sd){const si=doorInside(sd,sRoom);pts.push({x:si.x,y:si.y},{x:sd.x,y:sd.y},{x:sd.x,y:CORRY});}else pts.push({x:a.x,y:CORRY});  // exit straight out through the doorway
+    pts.push({x:(dd?dd.x:tx),y:CORRY});                             // travel along the corridor
+    if(dd){const di=doorInside(dd,dRoom);pts.push({x:dd.x,y:dd.y},{x:di.x,y:di.y});}                                                // enter straight in through the doorway
+    pts.push({x:tx,y:ty});}
+  // expand every leg into a furniture-avoiding sub-path so agents route AROUND objects instead of jamming on them
+  let cx=a.x,cy=a.y;const full=[];for(const p of pts){for(const w of legPath(cx,cy,p.x,p.y,a.id))full.push(w);cx=p.x;cy=p.y;}
+  a.path=full.length?full:[{x:tx,y:ty}];}
 let OBS=[];
 function buildObstacles(){const o=[];
   for(const id in LAYOUT.desks){const d=LAYOUT.desks[id];o.push({x:d.dx-1,y:d.dy-6,w:32,h:23,id});} // each desk incl. monitor + chair (own desk excepted in inObstacle)
@@ -505,6 +565,34 @@ const CLEAR=2;   // keep the sprite body this far off furniture so it never visu
 function freePoint(tx,ty,self){if(!inObstacle(tx,ty,self,CLEAR))return {x:tx,y:ty};
   for(let r=2;r<=26;r+=2){for(const o of [[0,r],[0,-r],[r,0],[-r,0],[r,r],[-r,-r],[r,-r],[-r,r]]){const x=tx+o[0],y=ty+o[1];
     if(x>ENV.x+4&&x<ENV.x+ENV.w-4&&y>ENV.y+4&&y<ENV.y+ENV.h-4&&!inObstacle(x,y,self,CLEAR))return {x:x,y:y};}}return {x:tx,y:ty};}
+// ---- furniture-aware routing: grid BFS within a room so agents route AROUND clustered objects (couches+table), not into them ----
+function lineClear(ax,ay,bx,by,id){const dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy),n=Math.max(1,Math.ceil(L/2));
+  for(let i=1;i<n;i++){const t=i/n;if(inObstacle(ax+dx*t,ay+dy*t,id,CLEAR))return false;}return true;}
+function gridPathInRoom(x0,y0,x1,y1,r,id){
+  const GS=3,x0b=r.x+1,x1b=r.x+r.w-1,y0b=r.y+WALLH,y1b=r.y+r.h-1;     // search the room interior (below the back wall)
+  const cols=Math.max(1,Math.round((x1b-x0b)/GS))+1,rows=Math.max(1,Math.round((y1b-y0b)/GS))+1;
+  const wx=c=>x0b+c*GS,wy=rr=>y0b+rr*GS;
+  const walk=(c,rr)=>c>=0&&c<cols&&rr>=0&&rr<rows&&!inObstacle(wx(c),wy(rr),id,CLEAR);
+  const snap=(px,py)=>{let bc=Math.max(0,Math.min(cols-1,Math.round((px-x0b)/GS))),br=Math.max(0,Math.min(rows-1,Math.round((py-y0b)/GS)));
+    if(walk(bc,br))return [bc,br];
+    for(let rad=1;rad<cols+rows;rad++)for(let dc=-rad;dc<=rad;dc++)for(let dr=-rad;dr<=rad;dr++){if(Math.abs(dc)!==rad&&Math.abs(dr)!==rad)continue;if(walk(bc+dc,br+dr))return [bc+dc,br+dr];}
+    return null;};
+  const s=snap(x0,y0),g=snap(x1,y1);if(!s||!g)return null;
+  const gk=g[0]+g[1]*cols,prev=new Int32Array(cols*rows).fill(-1),seen=new Uint8Array(cols*rows);
+  const q=[s[0]+s[1]*cols];seen[q[0]]=1;let found=q[0]===gk;
+  const N=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+  for(let h=0;h<q.length&&!found;h++){const k=q[h],c=k%cols,rr=(k/cols)|0;
+    for(const d of N){const nc=c+d[0],nr=rr+d[1];if(!walk(nc,nr))continue;
+      if(d[0]&&d[1]&&(!walk(c+d[0],rr)||!walk(c,rr+d[1])))continue;   // don't cut diagonal corners
+      const nk=nc+nr*cols;if(seen[nk])continue;seen[nk]=1;prev[nk]=k;if(nk===gk){found=true;break;}q.push(nk);}}
+  if(!found)return null;
+  const cells=[];for(let k=gk;k!==-1;k=prev[k])cells.push(k);cells.reverse();
+  const pts=cells.map(k=>({x:wx(k%cols),y:wy((k/cols)|0)}));pts[pts.length-1]={x:x1,y:y1};   // land exactly on the target
+  const out=[];let i=0;while(i<pts.length-1){let j=pts.length-1;while(j>i+1&&!lineClear(pts[i].x,pts[i].y,pts[j].x,pts[j].y,id))j--;out.push(pts[j]);i=j;}   // string-pull → few smooth waypoints
+  return out;}
+function legPath(x0,y0,x1,y1,id){const r0=roomAt(x0,y0),r1=roomAt(x1,y1);   // same room → route around its furniture; corridor/door transitions stay straight
+  if(r0&&r0===r1){const p=gridPathInRoom(x0,y0,x1,y1,ROOMS[r0],id);if(p&&p.length)return p;}
+  return [{x:x1,y:y1}];}
 const AVOID=15, BODY=9;   // AVOID: start dodging a teammate within this range · BODY: never get closer than this
 function moveAgent(a,dt,ents){if(!a.path||!a.path.length){a.moving=false;return;}
   const tg=a.path[0],dx=tg.x-a.x,dy=tg.y-a.y,d=Math.hypot(dx,dy);
@@ -638,6 +726,9 @@ function applyState(s){if(!s)return;state=s;if(!state.distributor)state.distribu
   const time=performance.now()-t0;
   const active=planning||!!activeAgent||Object.values(busyUntil).some(v=>v>time)||Object.values(busyWork).some(v=>v>time);   // captured BEFORE the flow starts runs, so cards snap to columns on startup instead of flying in
   try{scanDone();}catch(e){}try{ensureFlow();}catch(e){}
+  // Manager auto-finalises the schedule once every task is fully specified (Done), so planning is complete
+  try{const ts=state.tasks||[],allDone=ts.length>0&&ts.every(t=>colOf(t.status)==='done');
+    if(allDone){if(!state._allDoneFin){finalizePlan(state,projDevs(activeProj));state._allDoneFin=true;persistProjects();}}else state._allDoneFin=false;}catch(e){}
   const {slots}=computeSlots(),dist=LAYOUT.homes[state.distributor]||LAYOUT.homes.architect||{fx:144,fy:200};
   (state.tasks||[]).forEach(t=>{const sl=slots[t.id];if(!sl)return;let c=cards[t.id];
     if(!c){
@@ -1202,7 +1293,7 @@ function renderRoster(){const el=document.getElementById('roster');if(!el)return
   el.querySelectorAll('.rchip').forEach(c=>{const id=c.getAttribute('data-id');c.onclick=()=>{selAgent=id;openPanel('agents');};const cnv=c.querySelector('.rphoto');if(cnv){const a=roster.find(x=>x.id===id);drawPortrait(cnv,(a&&a.app)||(A[id]&&A[id].app)||genApp(a||{id:id}),id);}});
   const add=document.getElementById('rAdd');if(add)add.onclick=openCreateAgent;}
 function updateRosterDots(){const el=document.getElementById('roster');if(!el)return;el.querySelectorAll('.rchip').forEach(c=>{const id=c.getAttribute('data-id'),k=agentBusyKind(id);const d=c.querySelector('.rdot');if(d)d.style.background=RKDOT[k];const s=c.querySelector('.rstat');if(s){s.style.color=RKDOT[k];s.innerHTML='<i style="background:'+RKDOT[k]+'"></i>'+RKLABEL[k];}const lv=c.querySelector('.rlv');if(lv)lv.textContent='LV '+agentLevel(id);});}
-let _tick=0;setInterval(()=>{updateStatusChip();updateRosterDots();noteBadge();updateAutoBtn();   // light UI refresh every 400ms
+let _tick=0;setInterval(()=>{updateStatusChip();updateRosterDots();noteBadge();   // light UI refresh every 400ms
   if((++_tick%3)===0){try{cleanupSpecialistNotes();}catch(e){}try{ensureFlow();}catch(e){}}},400);   // heavier flow/cleanup every ~1.2s to save CPU
 function summaryText(){const c={backlog:0,inprogress:0,review:0,done:0};(state.tasks||[]).forEach(t=>c[colOf(t.status)]++);const total=(state.tasks||[]).length;return c.done+' done · '+c.inprogress+' WIP · '+c.review+' review · '+c.backlog+' backlog (of '+total+').';}
 function postSummary(tag){lastStandup=summaryText();termLine('['+(tag||'summary')+'] '+lastStandup,'agent');if(ELECTRON&&window.munder.appendAgentMemory)window.munder.appendAgentMemory({agentId:'architect',entry:{ts:Date.now(),text:(tag||'summary')+': '+lastStandup}});if(currentPanel==='overview')renderTab();}
@@ -1387,7 +1478,7 @@ function openOptions(){const v=appVersion||'…';
   document.getElementById('optCheck').onclick=checkUpdatesUI;
   const setAuto=()=>{const b=document.getElementById('optAuto');if(b){b.textContent='⚙ AUTO-FLOW: '+(autoFlow?'ON':'OFF');b.classList.toggle('gold',autoFlow);}};
   setAuto();
-  document.getElementById('optAuto').onclick=()=>{autoFlow=!autoFlow;updateAutoBtn();setAuto();toast('Auto-flow '+(autoFlow?'ON — agents pull backlog & run WIP/Review':'OFF — move cards manually'),autoFlow?'ok':'');};}
+  document.getElementById('optAuto').onclick=()=>{autoFlow=!autoFlow;setAuto();toast('Auto-flow '+(autoFlow?'ON — agents pull backlog & run WIP/Review':'OFF — move cards manually'),autoFlow?'ok':'');};}
 async function checkUpdatesUI(){const st=document.getElementById('optUpSt'),btn=document.getElementById('optCheck');
   if(!ELECTRON||!window.munder.checkUpdate){if(st)st.textContent='Updates work in the desktop app only.';return;}
   if(st)st.textContent='Checking…';if(btn)btn.disabled=true;
@@ -1428,10 +1519,7 @@ document.getElementById('gnBtn').onclick=openGantt;
 document.getElementById('notesBtn').onclick=openNotes;
 document.getElementById('termBtn').onclick=()=>openPanel('terminal');
 document.getElementById('rtBtn').onclick=openRoundtable;
-function updateAutoBtn(){const b=document.getElementById('autoBtn');if(!b)return;b.textContent='⚙ AUTO-FLOW: '+(autoFlow?'ON':'OFF');if(autoFlow){b.style.background='linear-gradient(180deg,#2d6e4f,#1f4f38)';b.style.color='#dfffe9';b.style.borderColor='#46d6c0';b.style.boxShadow='0 0 12px #46d6c077';}else{b.style.background='var(--panel2)';b.style.color='var(--ink-soft)';b.style.borderColor='var(--line)';b.style.boxShadow='none';}}
-document.getElementById('autoBtn').onclick=()=>{autoFlow=!autoFlow;updateAutoBtn();toast('Auto-flow '+(autoFlow?'ON — agents pull backlog & run WIP/Review':'OFF — move cards manually'),autoFlow?'ok':'');};
 document.getElementById('optBtn').onclick=openOptions;
-updateAutoBtn();
 
 /* ---- modes ---- */
 function setLive(on,label){const c=document.getElementById('liveChip');c.classList.toggle('on',on);document.getElementById('liveTxt').textContent=label||(on?"LIVE":"OFFLINE");}
