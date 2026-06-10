@@ -474,7 +474,7 @@ function ensureAgents(){computeLayout();
 /* ---- movement ---- */
 function doorOf(x,y){const r=roomAt(x,y);return r?ROOMS[r].door:null;}
 // a point just inside the room from its door, clear of the back wall + any wall-mounted board
-function doorInside(door,roomKey){const r=ROOMS[roomKey];if(!r)return {x:door.x,y:door.y};const topEdge=Math.abs(door.y-r.y)<8;return {x:door.x,y:topEdge?door.y+WALLH+12:door.y-WALLH-12};}
+function doorInside(door,roomKey){const r=ROOMS[roomKey];if(!r)return {x:door.x,y:door.y};const topEdge=Math.abs(door.y-r.y)<8;return {x:door.x,y:topEdge?door.y+WALLH+12:door.y-10};}  // lower rooms: clear the back wall + gantt; upper rooms: just step in (no wall there, and the table is deeper)
 function routeTo(a,tx,ty){const f=freePoint(tx,ty,a.id);tx=f.x;ty=f.y;
   const sRoom=roomAt(a.x,a.y),dRoom=roomAt(tx,ty);
   if(sRoom===dRoom){a.path=[{x:tx,y:ty}];return;}                  // same room (or both in the corridor) → go direct, sliding around furniture
@@ -516,16 +516,20 @@ function moveAgent(a,dt){if(!a.path||!a.path.length){a.moving=false;return;}
     else if(!inObstacle(a.x-px,a.y-py,a.id,CLEAR)){a.x-=px;a.y-=py;}
     else{a.path=[];a.moving=false;return;}}                        // boxed in — drop the path, think() re-routes
   a.moving=true;a.walk+=dt*0.45;if(Math.abs(dx)>0.2)a.face=dx<0?-1:1;}
-const SOCIAL=[{x:205,y:55},{x:225,y:58},{x:286,y:48},{x:235,y:127},{x:330,y:60},{x:40,y:212},{x:88,y:214}];
-const CONF_SEATS=[{x:48,y:92},{x:78,y:94},{x:108,y:94},{x:132,y:92}];
-const CHILL=[{x:178,y:70},{x:192,y:70},{x:288,y:70},{x:250,y:90},{x:332,y:72},{x:40,y:214},{x:90,y:214},{x:235,y:127}];
+const SOCIAL=[{x:205,y:55},{x:225,y:58},{x:286,y:48},{x:235,y:127},{x:330,y:60},{x:18,y:235},{x:112,y:198}];
+// unique standup seats in rows below the conference table, facing the kanban board — no two agents ever share a spot
+function standupSeat(i,n){const cols=Math.min(4,Math.max(2,n)),col=i%cols,row=Math.floor(i/cols);
+  const x=cols<=1?88:Math.round(46+col*((130-46)/(cols-1)));
+  return {x:x,y:Math.min(104,96+row*8)};}
+function seatFor(id){const team=roster.filter(a=>a.id!=='architect'&&a.id!=='client');const i=team.findIndex(a=>a.id===id);return standupSeat(i<0?0:i,team.length);}
+const CHILL=[{x:178,y:70},{x:192,y:70},{x:288,y:70},{x:250,y:90},{x:332,y:72},{x:16,y:198},{x:114,y:236},{x:235,y:127}];
 const BREAKCHAT=["Coffee time","Break!","Foosball?","Slow day…","brb","Refill.","Chill mode","No tasks rn"];
 const ACTIVITIES=[{x:312,y:92,act:'☕ getting coffee'},{x:198,y:100,act:'playing foosball'},{x:235,y:60,act:'checking the board'},{x:392,y:94,act:'in the washroom'},{x:100,y:232,act:'relaxing in the lounge'},{x:30,y:202,act:'taking a break'},{x:235,y:127,act:'chatting at the cooler'}];
 function think(a,time){
   const runWork=activeAgent===a.id||(busyUntil[a.id]||0)>time, cardWork=(busyWork[a.id]||0)>time;  // working = an actual run is active (set when a WIP/Review run starts)
   if(runWork||cardWork){ if(a.state!=='working'){a.state='working';const d=a.home||{fx:200,fy:CORRY};routeTo(a,d.fx,d.fy);a.bubble=null;} return; }   // working/planning -> at their own workstation
   if(standupUntil>time){ const begun=standupUntil-22000, delay=hashStr(a.id)%1500;   // stagger departures so they amble over ~1.5s instead of all bolting at once
-    if(a.state!=='standup'&&time>begun+delay){a.state='standup';if(a.id==='architect')routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);else if(a.id!=='client'){const idx=Math.abs(hashStr(a.id))%CONF_SEATS.length,s=CONF_SEATS[idx];routeTo(a,s.x,s.y);}a.bubble=pick(STANDUP);a.bubbleUntil=time+3200;} return; }   // standup gathers the team in the conference room
+    if(a.state!=='standup'&&time>begun+delay){a.state='standup';if(a.id==='architect')routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);else if(a.id!=='client'){const s=seatFor(a.id);routeTo(a,s.x,s.y);}a.bubble=pick(STANDUP);a.bubbleUntil=time+3200;} return; }   // standup gathers the team in the conference room
   if((busyBoard[a.id]||0)>time){ if(a.state!=='board'){a.state='board';routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);a.bubble=pick(["Updating board","Moving a card","Status change"]);a.bubbleUntil=time+2200;} return; }
   if(planning){ if(a.state!=='working'){a.state='working';const d=a.home||{fx:200,fy:CORRY};routeTo(a,d.fx,d.fy);} if(!a.moving&&Math.random()<0.005){a.bubble=a.id==='architect'?'Planning…':pick(STANDUP);a.bubbleUntil=time+2500;} return; }  // office is planning -> everyone stays still at their workstation
   if(a.state==='working'||a.state==='board'||a.state==='standup'){a.state='idle';a.nextIdle=0;}
@@ -920,9 +924,13 @@ function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first 
   updateFX(dt);
   // separation — agents shouldn't stand inside each other
   const ents=roster.map(a=>A[a.id]).filter(Boolean);
-  for(let i=0;i<ents.length;i++)for(let j=i+1;j<ents.length;j++){const p=ents[i],q=ents[j];let dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);if(d<0.001){dx=1;dy=0;d=1;}if(d<9){const push=(9-d)/2;let ux=dx/d,uy=dy/d;
-    if(p.moving||q.moving)continue;   // only un-stack STATIONARY agents — walkers pass through freely (no shoving / doorway jams)
-    const px=p.x-ux*push,py=p.y-uy*push;if(!inObstacle(px,py,p.id)){p.x=px;p.y=py;}const qx=q.x+ux*push,qy=q.y+uy*push;if(!inObstacle(qx,qy,q.id)){q.x=qx;q.y=qy;}}}
+  const shift=(e,mx,my)=>{const dirs=[[mx,my],[mx,0],[0,my],[-my,mx],[my,-mx],[-mx,-my]];   // try the ideal push, then fall back to any free direction
+    for(const v of dirs){const nx=e.x+v[0],ny=e.y+v[1];if(nx>ENV.x+3&&nx<ENV.x+ENV.w-3&&ny>ENV.y+3&&ny<ENV.y+ENV.h-3&&!inObstacle(nx,ny,e.id,0)){e.x=nx;e.y=ny;return;}}};
+  for(let i=0;i<ents.length;i++)for(let j=i+1;j<ents.length;j++){const p=ents[i],q=ents[j];let dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
+    if(d>=9)continue;
+    if((p.moving||q.moving)&&d>5)continue;          // walkers pass at moderate range; only resolve SEVERE overlaps (stacking)
+    if(d<0.001){const ang=i*2.39963;dx=Math.cos(ang);dy=Math.sin(ang);d=1;}   // exactly coincident → fan them out by index
+    const push=(9-d)/2,ux=dx/d,uy=dy/d;shift(p,-ux*push,-uy*push);shift(q,ux*push,uy*push);}
   // occasional chit-chat between two idle neighbours
   if(time>nextChat){for(let i=0;i<ents.length;i++){const p=ents[i];if(p.moving||agentBusyKind(p.id)!=='idle')continue;const q=ents.find((x,j)=>j!==i&&!x.moving&&Math.hypot(x.x-p.x,x.y-p.y)<22&&agentBusyKind(x.id)==='idle');if(q){p.face=q.x<p.x?-1:1;q.face=p.x<q.x?-1:1;p.bubble=pick(CHATTER);p.bubbleUntil=time+2600;nextChat=time+7000+Math.random()*9000;break;}}}
   // depth-sorted movable items (desks, plants, manager desk, people) — correct front/behind
