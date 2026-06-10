@@ -473,26 +473,37 @@ function ensureAgents(){computeLayout();
 
 /* ---- movement ---- */
 function doorOf(x,y){const r=roomAt(x,y);return r?ROOMS[r].door:null;}
-function routeTo(a,tx,ty){const pts=[],sd=doorOf(a.x,a.y),dd=doorOf(tx,ty);
+function routeTo(a,tx,ty){const f=freePoint(tx,ty,a.id);tx=f.x;ty=f.y;const pts=[],sd=doorOf(a.x,a.y),dd=doorOf(tx,ty);
   if(sd){pts.push({x:sd.x,y:sd.y});pts.push({x:sd.x,y:CORRY});}else pts.push({x:a.x,y:CORRY});
   pts.push({x:(dd?dd.x:tx),y:CORRY});if(dd)pts.push({x:dd.x,y:dd.y});pts.push({x:tx,y:ty});a.path=pts;}
 let OBS=[];
 function buildObstacles(){const o=[];
-  for(const id in LAYOUT.desks){const d=LAYOUT.desks[id];o.push({x:d.dx-1,y:d.dy-2,w:32,h:18,id});} // each desk (own desk excepted in inObstacle)
+  for(const id in LAYOUT.desks){const d=LAYOUT.desks[id];o.push({x:d.dx-1,y:d.dy-6,w:32,h:23,id});} // each desk incl. monitor + chair (own desk excepted in inObstacle)
   o.push({x:150,y:210,w:36,h:16,id:'architect'});                   // manager desk — owned by the architect so they can reach the seat in front of it
   o.push({x:38,y:78,w:96,h:12});                                    // conference table
-  o.push({x:16,y:204,w:32,h:16},{x:56,y:204,w:32,h:16},{x:32,y:226,w:46,h:14}); // lounge couches + table
+  o.push({x:34,y:205,w:30,h:16},{x:72,y:205,w:30,h:16},{x:50,y:227,w:42,h:13}); // lounge couches + table (aligned to where they're drawn)
   o.push({x:174,y:60,w:32,h:13},{x:176,y:84,w:46,h:14},{x:282,y:58,w:11,h:13},{x:300,y:58,w:50,h:24}); // breakroom couch, foosball, coffee, kitchen
   o.push({x:372,y:24,w:8,h:40},{x:410,y:24,w:8,h:40});              // toilet stalls
   o.push({x:444,y:158,w:7,h:16},{x:140,y:158,w:12,h:16},{x:140,y:84,w:16,h:18}); // right cooler, cabinet, bookshelf (left cooler removed — it isn't drawn)
   OBS=o;}
-function inObstacle(x,y,selfId){for(const r of OBS){if(r.id===selfId)continue;if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)return true;}return false;}
+function inObstacle(x,y,selfId,m){m=m||0;for(const r of OBS){if(r.id===selfId)continue;if(x>=r.x-m&&x<=r.x+r.w+m&&y>=r.y-m&&y<=r.y+r.h+m)return true;}return false;}
+const CLEAR=2;   // keep the sprite body this far off furniture so it never visually overlaps
+// nudge a target off any furniture it lands on, spiralling out to the nearest free, in-bounds spot
+function freePoint(tx,ty,self){if(!inObstacle(tx,ty,self,CLEAR))return {x:tx,y:ty};
+  for(let r=2;r<=26;r+=2){for(const o of [[0,r],[0,-r],[r,0],[-r,0],[r,r],[-r,-r],[r,-r],[-r,r]]){const x=tx+o[0],y=ty+o[1];
+    if(x>ENV.x+4&&x<ENV.x+ENV.w-4&&y>ENV.y+4&&y<ENV.y+ENV.h-4&&!inObstacle(x,y,self,CLEAR))return {x:x,y:y};}}return {x:tx,y:ty};}
 function moveAgent(a,dt){if(!a.path||!a.path.length){a.moving=false;return;}
   const tg=a.path[0],dx=tg.x-a.x,dy=tg.y-a.y,d=Math.hypot(dx,dy);
   if(d<1.1){a.x=tg.x;a.y=tg.y;a.path.shift();if(!a.path.length)a.moving=false;return;}
-  const sp=a.speed*dt,nx=a.x+dx/d*Math.min(sp,d),ny=a.y+dy/d*Math.min(sp,d);
-  if(inObstacle(nx,ny,a.id)){a.path=[];a.moving=false;return;}      // don't stand on objects — stop in front/behind
-  a.x=nx;a.y=ny;a.moving=true;a.walk+=dt*0.45;if(Math.abs(dx)>0.2)a.face=dx<0?-1:1;}
+  const sp=a.speed*dt,ux=dx/d,uy=dy/d,step=Math.min(sp,d),nx=a.x+ux*step,ny=a.y+uy*step;
+  if(!inObstacle(nx,ny,a.id,CLEAR)){a.x=nx;a.y=ny;}                 // path forward is clear
+  else if(!inObstacle(nx,a.y,a.id,CLEAR)){a.x=nx;}                  // blocked → slide along the vertical face
+  else if(!inObstacle(a.x,ny,a.id,CLEAR)){a.y=ny;}                  // or the horizontal face
+  else{const px=-uy*step,py=ux*step;                               // corner: try stepping perpendicular either way
+    if(!inObstacle(a.x+px,a.y+py,a.id,CLEAR)){a.x+=px;a.y+=py;}
+    else if(!inObstacle(a.x-px,a.y-py,a.id,CLEAR)){a.x-=px;a.y-=py;}
+    else{a.path=[];a.moving=false;return;}}                        // boxed in — drop the path, think() re-routes
+  a.moving=true;a.walk+=dt*0.45;if(Math.abs(dx)>0.2)a.face=dx<0?-1:1;}
 const SOCIAL=[{x:205,y:55},{x:225,y:58},{x:286,y:48},{x:235,y:127},{x:330,y:60},{x:40,y:212},{x:88,y:214}];
 const CONF_SEATS=[{x:48,y:92},{x:78,y:94},{x:108,y:94},{x:132,y:92}];
 const CHILL=[{x:178,y:70},{x:192,y:70},{x:288,y:70},{x:250,y:90},{x:332,y:72},{x:40,y:214},{x:90,y:214},{x:235,y:127}];
