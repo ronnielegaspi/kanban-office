@@ -908,7 +908,7 @@ function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first 
   drawDecor();
   // static background fixtures (against walls)
   table(40,80,92);drawBreakroom();   // boards are depth-sorted with people below (see items)
-  P(372,20,1,42,"#5a6a72");P(410,20,1,42,"#5a6a72");toiletIcon(378,28);toiletIcon(416,28);sink(378,72);sink(416,72);P(434,22,14,7,"#cdd9de");P(434,22,14,1,"#eef6f8");
+  P(372,20,1,42,"#5a6a72");P(410,20,1,42,"#5a6a72");toiletIcon(378,28);toiletIcon(416,28);sink(363,32);sink(363,52);P(434,22,14,7,"#cdd9de");P(434,22,14,1,"#eef6f8");
   drawLounge();
   // standup scheduler — when there are tasks, the Manager gathers the team; the meeting begins once everyone has arrived
   if((state.tasks||[]).length>0&&!planning&&time>nextStandup&&standupUntil<time){nextStandup=time+3600000;doStandup();}   // hourly standup
@@ -1342,6 +1342,8 @@ function openOptions(){const v=appVersion||'…';
     '<div class="sect">APP</div>'+
     '<div class="kv" style="display:flex;align-items:center;gap:10px"><span class="logo" style="width:34px;height:34px;font-size:14px;flex:none">KO</span><div><b style="font-family:Silkscreen;font-size:11px;color:var(--gold)">KANBAN OFFICE</b><div class="why" style="margin:2px 0 0">Version <b id="optVer">v'+esc(v)+'</b></div></div></div>'+
     '<div class="row2" style="margin-top:8px"><button class="mini gold" id="optCheck">⟳ CHECK FOR UPDATES</button> <span id="optUpSt" style="font-size:13px;color:var(--ink-soft)"></span></div>'+
+    '<div class="sect" style="margin-top:12px">AUTOMATION</div>'+
+    '<div class="row2"><button class="mini" id="optAuto"></button> <span class="why" style="margin:0">When ON, agents auto-pull the backlog and run WIP/Review without you moving cards.</span></div>'+
     '<div class="sect" style="margin-top:12px">CREDITS</div>'+
     '<div class="why" style="line-height:1.7">Created by <b>Ronnie Legaspi</b>.<br>Planning agents run on <b>Claude Code</b> (Anthropic) using your own account.<br>Pixel-art office, Kanban &amp; Gantt engine: hand-built HTML canvas — no frameworks.</div>'+
     '<div class="row2" style="margin-top:8px"><button class="mini" id="optRepo">GITHUB ↗</button><button class="mini" id="optRel">RELEASES ↗</button></div>'+
@@ -1350,7 +1352,10 @@ function openOptions(){const v=appVersion||'…';
   const ext=u=>{if(ELECTRON&&window.munder.openExternal)window.munder.openExternal(u);else window.open(u,'_blank');};
   document.getElementById('optRepo').onclick=()=>ext('https://github.com/ronnielegaspi/kanban-office');
   document.getElementById('optRel').onclick=()=>ext('https://github.com/ronnielegaspi/kanban-office/releases');
-  document.getElementById('optCheck').onclick=checkUpdatesUI;}
+  document.getElementById('optCheck').onclick=checkUpdatesUI;
+  const setAuto=()=>{const b=document.getElementById('optAuto');if(b){b.textContent='⚙ AUTO-FLOW: '+(autoFlow?'ON':'OFF');b.classList.toggle('gold',autoFlow);}};
+  setAuto();
+  document.getElementById('optAuto').onclick=()=>{autoFlow=!autoFlow;updateAutoBtn();setAuto();toast('Auto-flow '+(autoFlow?'ON — agents pull backlog & run WIP/Review':'OFF — move cards manually'),autoFlow?'ok':'');};}
 async function checkUpdatesUI(){const st=document.getElementById('optUpSt'),btn=document.getElementById('optCheck');
   if(!ELECTRON||!window.munder.checkUpdate){if(st)st.textContent='Updates work in the desktop app only.';return;}
   if(st)st.textContent='Checking…';if(btn)btn.disabled=true;
