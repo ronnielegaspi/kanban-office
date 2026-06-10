@@ -1,0 +1,18 @@
+{
+  "name": "kanban-office",
+  "productName": "Kanban Office",
+  "version": "1.0.0",
+  "description": "Kanban Office — a living pixel PM office that runs Claude Code in itself to turn requests into day-by-day plans on a kanban whiteboard.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-packager . \"Kanban Office\" --platform=win32 --arch=arm64 --overwrite --out=dist --prune=true --ignore=\"^/dist\" --ignore=\"\\.log$\" --ignore=\"request-inbox\"",
+    "package:x64": "electron-packager . \"Kanban Office\" --platform=win32 --arch=x64 --overwrite --out=dist --prune=true --ignore=\"^/dist\" --ignore=\"\\.log$\" --ignore=\"request-inbox\""
+  },
+  "author": "PM Floor",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/packager": "^18.4.4",
+    "electron": "^33.4.11"
+  }
+}

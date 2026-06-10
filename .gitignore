@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# packaged app + installers (regenerable, large)
+dist/
+*.zip
+installer-build/app.zip
+installer-build-x64/app.zip
+
+# runtime / user data written by the app
+office-state.json
+projects.json
+request-inbox.json
+agent-memory/
+
+# logs / scratch
+*.log

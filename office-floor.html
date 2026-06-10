@@ -1,0 +1,1347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kanban Office</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap" rel="stylesheet" />
+<style>
+  :root{--bg:#10131c;--bg2:#171b27;--panel:#1b2030;--panel2:#222840;--ink:#e7ecf6;--ink-soft:#9aa6c4;
+    --gold:#ffd34d;--teal:#46d6c0;--navy:#2d3f63;--edge:#0a0d14;--line:#2c3450;
+    --p0:#ff5147;--p1:#ff9b3d;--p2:#4aa3ff;--p3:#8a93ad;}
+  *{box-sizing:border-box;}html,body{margin:0;height:100%;}
+  body{background:radial-gradient(1200px 700px at 75% -10%,#1b2740 0%,transparent 60%),var(--bg);color:var(--ink);
+    font-family:"VT323","Courier New",monospace;font-size:18px;padding:clamp(8px,2vw,22px);image-rendering:pixelated;}
+  .wrap{width:min(98vw,2600px);margin:0 auto;}
+  .gp{border:2px solid var(--line);border-radius:8px;background:var(--panel);box-shadow:0 0 0 2px #0a0d1466,0 8px 22px #0006 inset;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:10px;}
+  .brand{display:flex;align-items:center;gap:13px;flex:0 1 auto;min-width:0;}
+  .logo{width:50px;height:50px;flex:0 0 auto;background:linear-gradient(160deg,#3a4f7a,#2d3f63);display:grid;place-items:center;color:var(--gold);
+    font-family:"Silkscreen",monospace;font-size:20px;border:2px solid var(--gold);border-radius:9px;box-shadow:0 0 12px #ffd34d44;}
+  h1{font-family:"Silkscreen",monospace;font-size:clamp(15px,2.4vw,24px);margin:0;color:var(--gold);text-shadow:0 0 10px #ffd34d55;}
+  .sub{color:var(--ink-soft);font-size:15px;margin-top:2px;}
+  .controls{display:flex;gap:7px;flex-wrap:nowrap;align-items:center;justify-content:flex-end;flex:1 1 auto;min-width:0;overflow-x:auto;}
+  .live{display:inline-flex;align-items:center;gap:7px;font-family:"Silkscreen",monospace;font-size:9px;background:var(--bg2);padding:8px 11px;border:2px solid var(--line);border-radius:7px;}
+  .live .led{width:9px;height:9px;border-radius:50%;background:#b9332e;} .live.on .led{background:var(--teal);box-shadow:0 0 8px var(--teal);animation:blink 1.1s steps(2) infinite;}
+  @keyframes blink{50%{opacity:.4;}}
+  .gbtn{font-family:"Silkscreen",monospace;font-size:11px;white-space:nowrap;flex:0 0 auto;background:var(--panel2);color:var(--ink);cursor:pointer;border:2px solid var(--line);border-radius:7px;padding:9px 10px;transition:transform .06s, box-shadow .06s;}
+  .gbtn:hover{box-shadow:0 0 10px #46d6c055;border-color:var(--teal);} .gbtn:active{transform:translateY(2px);}
+  .gbtn.gold{background:linear-gradient(180deg,#3a3a22,#2a2a18);color:var(--gold);border-color:var(--gold);}
+  .stage{display:block;}
+  .floorcard{background:#0a0c12;padding:8px;border-radius:10px;border:2px solid var(--line);overflow:hidden;margin:0 auto;display:flex;justify-content:center;align-items:center;}
+  canvas{width:100%;height:auto;display:block;image-rendering:pixelated;cursor:default;}
+  .hud{display:flex;flex-direction:column;gap:0;min-height:300px;}
+  .tabs{display:flex;gap:4px;padding:6px 6px 0;background:var(--bg2);border:2px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;}
+  .tab{flex:1;font-family:"Silkscreen",monospace;font-size:9px;text-align:center;padding:9px 4px;color:var(--ink-soft);background:var(--panel);border:2px solid var(--line);border-bottom:none;border-radius:7px 7px 0 0;cursor:pointer;}
+  .tab.active{color:var(--gold);background:var(--panel2);box-shadow:0 -2px 10px #ffd34d33;}
+  .tabbody{border:2px solid var(--line);border-radius:0 0 8px 8px;background:var(--panel);padding:12px;max-height:640px;overflow:auto;}
+  .sect{font-family:"Silkscreen",monospace;font-size:9px;color:var(--teal);margin:2px 0 6px;letter-spacing:.5px;}
+  .proj{font-family:"Silkscreen",monospace;font-size:8px;color:var(--ink-soft);} .rt{font-size:20px;margin:3px 0;color:var(--gold);}
+  .why{font-size:14px;color:var(--ink-soft);line-height:1.25;}
+  .badge{display:inline-block;font-family:"Silkscreen",monospace;font-size:9px;color:#10131c;padding:3px 7px;border-radius:4px;margin-top:6px;}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 10px;}
+  .stat{padding:7px 0;text-align:center;border-radius:6px;color:#10131c;} .stat b{display:block;font-family:"Silkscreen",monospace;font-size:15px;} .stat span{font-size:11px;}
+  .days{display:flex;flex-direction:column;gap:5px;max-height:150px;overflow:auto;margin-top:4px;}
+  .day{border-left:3px solid var(--gold);padding:2px 0 2px 8px;} .day .dn{font-family:"Silkscreen",monospace;font-size:8px;color:var(--teal);}
+  .day .ti{font-size:14px;} .day .ti small{color:var(--ink-soft);}
+  .ptag{font-family:"Silkscreen",monospace;font-size:7px;color:#10131c;padding:1px 4px;border-radius:3px;margin-right:3px;}
+  .doc{font-size:13px;color:var(--ink-soft);} .doc code{background:var(--bg2);padding:1px 5px;border-radius:4px;border:1px solid var(--line);}
+  /* agent roster cards */
+  .acard{display:flex;align-items:center;gap:9px;padding:8px;border:2px solid var(--line);border-radius:7px;background:var(--bg2);margin-bottom:6px;cursor:pointer;}
+  .acard:hover{border-color:var(--teal);} .acard.sel{border-color:var(--gold);box-shadow:0 0 10px #ffd34d33;}
+  .ava{width:26px;height:26px;border-radius:5px;flex:0 0 auto;border:2px solid #0008;}
+  .acard .nm{font-size:16px;} .acard .rl{font-size:12px;color:var(--ink-soft);}
+  .stbar{height:6px;border-radius:3px;background:#0c0f18;border:1px solid var(--line);overflow:hidden;min-width:54px;flex:0 0 54px;}
+  .stbar i{display:block;height:100%;width:30%;background:var(--teal);} .stbar.busy i{width:100%;background:var(--gold);}
+  .pill{font-family:"Silkscreen",monospace;font-size:7px;padding:2px 5px;border-radius:4px;background:var(--panel2);color:var(--ink-soft);border:1px solid var(--line);}
+  /* sub tabs */
+  .subtabs{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap;}
+  .stab{font-family:"Silkscreen",monospace;font-size:8px;padding:6px 8px;border-radius:6px;border:2px solid var(--line);background:var(--bg2);color:var(--ink-soft);cursor:pointer;}
+  .stab.active{color:var(--gold);border-color:var(--gold);}
+  .kv{font-size:15px;margin:4px 0;} .kv b{font-family:"Silkscreen",monospace;font-size:8px;color:var(--teal);}
+  textarea,input.f,select.f{width:100%;font-family:"VT323",monospace;font-size:15px;border:2px solid var(--line);border-radius:6px;padding:6px;background:#0c0f18;color:var(--ink);outline:none;}
+  .row2{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:5px 0;}
+  .mini{font-family:"Silkscreen",monospace;font-size:8px;padding:6px 8px;border-radius:6px;border:2px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;}
+  .mini.gold{color:var(--gold);border-color:var(--gold);} .mini.red{color:#fff;background:#7a241f;border-color:#b9332e;}
+  .hist{font-size:13px;color:var(--ink-soft);max-height:200px;overflow:auto;} .hist .h{padding:3px 0;border-bottom:1px solid var(--line);}
+  .aterm{height:150px;overflow:auto;padding:7px 9px;background:#070a06;color:#9ef0a0;font-family:"VT323",monospace;font-size:14px;line-height:1.15;white-space:pre-wrap;word-break:break-word;border:2px solid var(--line);border-radius:6px;}
+  .aterm .ln{display:block;}
+  .flist{font-size:12px;color:var(--ink-soft);} .flist .f2{display:flex;gap:6px;align-items:center;margin:3px 0;}
+  /* kanban board (board tab + modal) */
+  .kboard{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+  @media(max-width:520px){.kboard{grid-template-columns:repeat(2,1fr);}}
+  .kcol{background:#10131c;border:2px solid var(--line);border-radius:7px;display:flex;flex-direction:column;min-height:120px;}
+  .kcol-head{font-family:"Silkscreen",monospace;font-size:8px;color:#10131c;padding:6px;border-radius:5px 5px 0 0;display:flex;justify-content:space-between;}
+  .kcol-body{padding:5px;display:flex;flex-direction:column;gap:5px;max-height:50vh;overflow:auto;}
+  .kcard{background:var(--bg2);border:2px solid var(--line);border-left:5px solid #888;border-radius:5px;padding:5px 6px;cursor:pointer;}
+  .kcard:hover{border-color:var(--teal);} .kc-top{display:flex;justify-content:space-between;}
+  .kc-id{font-family:"Silkscreen",monospace;font-size:7px;color:var(--ink-soft);} .kc-pri{font-family:"Silkscreen",monospace;font-size:7px;color:#10131c;padding:1px 4px;border-radius:3px;}
+  .kc-title{font-size:14px;margin:2px 0;} .kc-meta{display:flex;gap:5px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--ink-soft);margin-top:3px;}
+  .kc-owner{color:#10131c;font-family:"Silkscreen",monospace;font-size:7px;padding:2px 5px;border-radius:4px;}
+  .kc-tag{font-family:"Silkscreen",monospace;font-size:7px;padding:1px 5px;border-radius:4px;color:#fff;border:1px solid rgba(255,255,255,.25);}   /* project tag — outlined so it differs from the owner */
+  .kc-hrs{margin-left:auto;color:var(--ink-soft);font-size:11px;}
+  .kc-rev{display:inline-flex;align-items:center;gap:3px;font-family:"VT323",monospace;font-size:13px;color:#06121f;background:#7cc4ff;border:1px solid #2a6aa0;padding:0 6px;border-radius:9px;margin:3px 0;}   /* reviewer pill — distinct rounded shape */
+  /* terminal */
+  .termwrap{position:fixed;left:14px;right:14px;bottom:12px;z-index:40;border:2px solid var(--line);border-radius:9px;overflow:hidden;background:#070a06;box-shadow:0 -6px 24px #0009;}
+  .termbar{display:flex;align-items:center;gap:7px;background:#10160e;padding:7px 10px;border-bottom:2px solid var(--line);}
+  .termbar b{font-family:"Silkscreen",monospace;font-size:9px;color:#9ef0a0;} .tdot{width:9px;height:9px;border-radius:50%;}
+  .tdot.r{background:#e0524f;}.tdot.y{background:#e8b53a;}.tdot.g{background:#46a36a;} .termbar #termstate{margin-left:auto;font-family:"Silkscreen",monospace;font-size:8px;color:#6fa873;}
+  .term{height:148px;overflow:auto;padding:8px 11px;font-family:"VT323",monospace;font-size:16px;line-height:1.18;color:#9ef0a0;white-space:pre-wrap;word-break:break-word;}
+  .term .ln{display:block;} .sys{color:#7fc7da;}.agent{color:#ffd34d;}.tool{color:#c79bf0;}.ok{color:#7ee787;}.err{color:#ff8d7a;}.dim{color:#5f7a62;}
+  .terminput{display:flex;align-items:center;gap:8px;background:#0b0f0a;border-top:2px solid var(--line);padding:7px 10px;}
+  .terminput span{color:#9ef0a0;font-family:"Silkscreen",monospace;font-size:11px;}
+  .terminput input{flex:1;background:#070a06;border:2px solid #1f2a1c;color:#9ef0a0;font-family:"VT323",monospace;font-size:16px;padding:6px 8px;outline:none;border-radius:5px;}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:#06080ccc;display:flex;align-items:center;justify-content:center;z-index:50;}
+  .overlay.hidden{display:none;} .modal{width:min(640px,94vw);max-height:86vh;overflow:auto;background:var(--panel);border:2px solid var(--gold);border-radius:10px;box-shadow:0 0 30px #ffd34d22;}
+  .modal.wide{width:min(1080px,96vw);}
+  .gbar2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px;}
+  .gbar2 .why{margin:0;}
+  .gwrap{overflow:auto;max-height:64vh;border:2px solid var(--line);border-radius:9px;background:var(--bg2);}
+  .ggrid{display:inline-block;min-width:100%;}
+  .ghead{display:flex;position:sticky;top:0;z-index:5;}
+  .gcorner{position:sticky;left:0;z-index:6;background:var(--panel);border-right:2px solid var(--line);border-bottom:2px solid var(--line);box-sizing:border-box;display:flex;align-items:center;padding:0 8px;font-family:"Silkscreen",monospace;font-size:8px;color:var(--ink-soft);}
+  .ghcell{flex:0 0 auto;text-align:center;font-family:"Silkscreen",monospace;font-size:7px;color:var(--ink-soft);line-height:1.5;padding:4px 0;border-right:1px solid var(--line);border-bottom:2px solid var(--line);box-sizing:border-box;background:var(--panel);}
+  .ghcell.wk{background:#10131c;} .ghcell.tdy{color:var(--gold);background:#1d2438;}
+  .ghcell b{color:var(--ink);font-size:8px;}
+  .grow{display:flex;border-bottom:1px solid var(--line);}
+  .grow:nth-child(odd) .gtrack{box-shadow:inset 0 0 0 999px #ffffff05;}
+  .gnm{position:sticky;left:0;z-index:4;background:var(--panel);border-right:2px solid var(--line);box-sizing:border-box;padding:6px 8px;overflow:hidden;}
+  .gnm .t{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gnm .e{display:flex;gap:4px;align-items:center;margin-top:5px;flex-wrap:nowrap;overflow:hidden;}
+  .gnm .e input{font-family:"VT323",monospace;font-size:13px;border:2px solid var(--line);background:#0c0f18;color:var(--ink);border-radius:4px;padding:1px 3px;flex:0 0 auto;}
+  .gnm .e .dt{width:104px;} .gnm .e .dy{width:34px;text-align:center;}
+  .gnm .e .est{font-size:10px;color:var(--ink-soft);font-family:"Silkscreen",monospace;margin-left:auto;}
+  .gtrack{position:relative;flex:0 0 auto;box-sizing:border-box;min-height:42px;}
+  .gbar{position:absolute;top:50%;transform:translateY(-50%);height:20px;border-radius:5px;border:1px solid #0008;cursor:grab;display:flex;align-items:center;padding:0 6px;color:#10131c;font-family:"Silkscreen",monospace;font-size:7px;overflow:hidden;box-shadow:0 2px 3px #0006;user-select:none;}
+  .gbar:hover{filter:brightness(1.08);} .gbar.drag{cursor:grabbing;z-index:3;filter:brightness(1.12);}
+  .ghandle{position:absolute;right:0;top:0;width:9px;height:100%;cursor:ew-resize;border-radius:0 5px 5px 0;background:linear-gradient(90deg,transparent,#0004);}
+  .gtoday{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--gold);opacity:.55;z-index:1;pointer-events:none;}
+  .mhead{display:flex;align-items:center;background:linear-gradient(180deg,#2d3f63,#22304d);color:var(--gold);padding:10px 12px;font-family:"Silkscreen",monospace;font-size:11px;position:sticky;top:0;}
+  .mhead .mx{margin-left:auto;background:var(--gold);color:#10131c;border:none;border-radius:5px;font-size:10px;padding:4px 9px;cursor:pointer;}
+  .mbody{padding:14px;font-size:15px;}
+  .desc{background:#0c0f18;border:2px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:6px;font-size:14px;color:var(--ink-soft);line-height:1.4;}
+  .desc h3{font-size:13px;color:var(--gold);margin:7px 0 2px;font-family:"Silkscreen",monospace;} .desc h4{font-size:12px;color:var(--teal);margin:6px 0 2px;font-family:"Silkscreen",monospace;}
+  .desc p{margin:3px 0;} .desc ul,.desc ol{margin:3px 0 4px 18px;} .desc li{margin:2px 0;} .desc code{background:#1a2030;padding:0 4px;border-radius:3px;color:var(--ink);}
+  .desc b{color:var(--ink);}
+  .notecard{border:2px solid var(--line);border-radius:7px;background:#0c0f18;padding:7px 9px;margin:5px 0;}
+  .noterow{display:flex;gap:6px;align-items:center;}
+  .notets{flex:1;font-size:11px;color:var(--ink-soft);font-family:"Silkscreen",monospace;}
+  .chip{display:inline-block;color:#10131c;font-family:"Silkscreen",monospace;font-size:8px;padding:2px 5px;border-radius:3px;margin-right:5px;}
+  footer{margin-top:12px;color:var(--ink-soft);font-size:14px;text-align:center;} footer code{background:var(--bg2);padding:1px 5px;border-radius:4px;}
+  .roster{max-width:1040px;margin:12px auto 0;display:flex;align-items:center;gap:14px;padding:8px 12px;flex-wrap:wrap;justify-content:center;}
+  .rgroup{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .rlabel{font-family:"Silkscreen",monospace;font-size:8px;color:var(--teal);margin-right:3px;}
+  .rdiv{width:2px;height:26px;background:var(--line);}
+  .rchip{display:flex;align-items:center;gap:8px;padding:5px 9px;border:2px solid var(--line);border-radius:7px;background:var(--bg2);cursor:pointer;}
+  .rchip:hover{border-color:var(--gold);box-shadow:0 0 8px #ffd34d33;}
+  .rphoto{width:32px;height:32px;border:2px solid #0008;border-radius:5px;image-rendering:pixelated;flex:0 0 auto;background:#222a3d;}
+  .rinfo{display:flex;flex-direction:column;line-height:1.05;}
+  .rnm{font-size:14px;} .rpos{font-size:11px;color:var(--ink-soft);}
+  .rstat{font-size:10px;font-weight:bold;letter-spacing:.3px;display:flex;align-items:center;gap:4px;margin-top:1px;}
+  .rstat i{width:7px;height:7px;border-radius:50%;display:inline-block;}
+  .rdot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+  .raddchip{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border:2px dashed var(--teal);border-radius:7px;background:transparent;color:var(--teal);cursor:pointer;font-family:"Silkscreen",monospace;font-size:9px;}
+  .raddchip:hover{background:#46d6c01a;}
+  .mrp{flex:0 0 auto;border:2px solid #0008;border-radius:4px;image-rendering:pixelated;}
+  .xpbar{height:9px;background:#0c0f18;border:2px solid var(--line);border-radius:5px;overflow:hidden;margin:5px 0;}
+  .xpbar i{display:block;height:100%;background:linear-gradient(90deg,#46d6c0,#ffd34d);}
+  .cosgrid{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+  .cosbtn{font-family:"VT323",monospace;font-size:15px;padding:3px 9px;border:2px solid var(--line);border-radius:6px;background:var(--bg2);color:var(--ink);cursor:pointer;}
+  .cosbtn.on{border-color:var(--gold);color:var(--gold);box-shadow:0 0 8px #ffd34d44;}
+  .cosbtn.lock{opacity:.45;cursor:not-allowed;}
+  .rlv{font-family:"Silkscreen",monospace;font-size:9px;color:var(--gold);}
+  #toastwrap{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:9999;align-items:center;pointer-events:none;}
+  .toast{background:#11151f;border:2px solid var(--gold);color:var(--ink);font-family:"VT323",monospace;font-size:17px;padding:9px 16px;border-radius:9px;box-shadow:0 6px 22px #000a;opacity:0;transform:translateY(12px);transition:opacity .35s,transform .35s;max-width:60vw;text-align:center;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.ok{border-color:var(--teal);} .toast.err{border-color:#ff5147;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="logo">KO</div>
+      <div><h1>KANBAN OFFICE</h1><div class="sub">A living PM office that runs Claude Code in itself.</div></div></div>
+    <div class="controls">
+      <span class="live gp" id="liveChip"><span class="led"></span><span id="liveTxt">OFFLINE</span></span>
+      <button class="gbtn" id="ovBtn">OVERVIEW</button>
+      <button class="gbtn" id="bdBtn">BOARD</button>
+      <button class="gbtn" id="gnBtn">GANTT</button>
+      <button class="gbtn" id="agBtn">AGENTS</button>
+      <button class="gbtn" id="pjBtn">PROJECTS</button>
+      <button class="gbtn gold" id="notesBtn">NOTES</button>
+      <button class="gbtn gold" id="termBtn">▶ TERMINAL</button>
+      <button class="gbtn gold" id="rtBtn">🗣️ ROUNDTABLE</button>
+      <button class="gbtn" id="autoBtn">AUTO-FLOW</button>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="floorcard"><canvas id="floor" width="1840" height="1008"></canvas></div>
+  </div>
+  <div class="roster gp" id="roster"></div>
+
+  <footer id="foot">Runs Claude Code in itself — open the TERMINAL to type a request and the team plans it onto the whiteboard.</footer>
+</div>
+
+<div class="overlay hidden" id="overlay"><div class="modal"><div class="mhead"><span id="mtitle">—</span><button class="mx" id="mclose">CLOSE ✕</button></div><div class="mbody" id="mbody"></div></div></div>
+
+<script>
+const ELECTRON=!!window.munder, SERVER=!ELECTRON&&(location.protocol==='http:'||location.protocol==='https:');
+const NICK={architect:"Manager",client:"Lounge Host",scoper:"Sales/Scope",taskwriter:"Accounts",estimator:"Accountant",scheduler:"Scheduling",unreal:"Engineering",gamedesign:"Creative",simulation:"Quality"};
+const BUILTIN_IDS={architect:1,client:1,scoper:1,taskwriter:1,estimator:1,scheduler:1,unreal:1,gamedesign:1,simulation:1};
+function slugId(s){let b=(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,28)||'agent';let id=b,n=2;while(BUILTIN_IDS[id]||roster.some(a=>a.id===id)||(removedIds&&removedIds.includes(id)))id=b+'-'+(n++);return id;}  // readable id from the role/name, e.g. "game-designer"
+function ownerName(id){const a=roster.find(x=>x.id===id);if(a)return a.name||a.role||a.id;if(NICK[id])return NICK[id];return /^agent[0-9a-z]{5,}$/i.test(id||'')?'(unassigned)':(id||'?');}   // never show the raw id code
+function ownerColor(id){const a=roster.find(x=>x.id===id);return (a&&a.color)||COLORS[id]||'#777';}
+function inferRole(t){const s=(((t&&t.title)||'')+' '+((t&&t.epic)||'')+' '+((t&&t.description)||'')).toLowerCase();   // a SPECIFIC role from the task, not "specialist"
+  if(/unreal|blueprint|c\+\+|engine|implement|integration|backend|gameplay code|networking|replicat|api|\bsystem\b|perf|optimi/.test(s))return 'Unreal Engineer';
+  if(/design|ux|\bui\b|feature|level|balanc|mechanic|economy|progression|onboarding|loop/.test(s))return 'Game Designer';
+  if(/\bsim|physics|\bai\b|behavior|behaviour|\bmodel|telemetry|determin|scenario/.test(s))return 'Simulation Engineer';
+  if(/\bart\b|visual|animation|niagara|\bvfx\b|shader|material|render|lighting/.test(s))return 'Technical Artist';
+  if(/audio|sound|music|\bsfx\b/.test(s))return 'Audio Designer';
+  if(/\btest|\bqa\b|quality|verif/.test(s))return 'QA Engineer';
+  return (t&&t.epic)?(t.epic+' Specialist'):'Game Designer';}
+function roleCat(s){s=(s||'').toLowerCase();
+  if(/unreal|engineer|blueprint|c\+\+|backend|program|develop|integration|networking|gameplay code|\bsystem/.test(s))return 'eng';
+  if(/design|\bux\b|\bui\b|gameplay|level|mechanic|balanc|economy|progression|product|feature/.test(s))return 'design';
+  if(/\bsim|physics|\bai\b|behavi|telemetry|determin|scenario/.test(s))return 'sim';
+  if(/\bart\b|animation|\bvfx\b|shader|render|visual|lighting|niagara/.test(s))return 'art';
+  if(/audio|sound|music|\bsfx\b/.test(s))return 'audio';
+  if(/\bqa\b|test|quality|verif/.test(s))return 'qa';
+  return null;}
+function matchAgent(t){const cat=roleCat(NICK[t.owner]||t.owner)||roleCat(inferRole(t));if(!cat)return null;return roster.find(a=>a.id!=='architect'&&a.id!=='client'&&roleCat((a.role||'')+' '+(a.name||''))===cat)||null;}  // best existing team agent — the task's own owner is the strongest signal
+function cleanupSpecialistNotes(){if(!activeProj)return;const pd=projData[activeProj];if(!pd||!pd.notes||!pd.notes.length)return;const seen={};let changed=false;
+  const covered=role=>{const rc=roleCat(role);return roster.some(a=>a.id!=='architect'&&a.id!=='client'&&((rc&&roleCat((a.role||'')+' '+(a.name||''))===rc)||(a.role||'').toLowerCase()===(role||'').toLowerCase()));};
+  pd.notes=pd.notes.filter(n=>{const isReq=n.agent||/🧩/.test(n.text||'');if(!isReq)return true;   // only touch specialist-request notes (incl. old plain-text ones)
+    let role=n.agent?n.agent.role:'';
+    if(!role){const m=(n.text||'').match(/(?:Missing|Add) specialist:\s*([^—\-·\n]+?)(?:\s*[—\-·]|$)/i);role=m?m[1].trim():'';}
+    if(!role||/^agent[0-9a-z]{5,}$/i.test(role)){changed=true;return false;}                 // stale / raw-id / unparseable → drop
+    if(covered(role)){changed=true;return false;}                                            // role already on the team → drop
+    const cat=roleCat(role)||role.toLowerCase();if(seen[cat]){changed=true;return false;}seen[cat]=1;return true;});  // dedupe by role/category
+  if(changed){persistProjects();if(currentPanel==='overview'||currentPanel==='agents')renderTab();}}
+function specialistCovered(projId,role){const cat=roleCat(role),rl=(role||'').toLowerCase();   // already on the team OR already requested → no duplicate request
+  if(roster.some(a=>a.id!=='architect'&&a.id!=='client'&&((cat&&roleCat((a.role||'')+' '+(a.name||''))===cat)||(a.role||'').toLowerCase()===rl)))return true;
+  const pd=projData[projId];if(pd&&pd.notes&&pd.notes.some(n=>n.agent&&((cat&&roleCat(n.agent.role)===cat)||(n.agent.role||'').toLowerCase()===rl)))return true;
+  return false;}
+function migrateAgentIds(){let changed=false;roster.forEach(a=>{if(/^agent[0-9a-z]{5,}$/i.test(a.id||'')){const old=a.id,nid=slugId(a.role||a.name);if(nid&&nid!==old){
+    Object.keys(projData).forEach(pid=>{const tk=projData[pid]&&projData[pid].state&&projData[pid].state.tasks;if(tk)tk.forEach(t=>{if(t.owner===old)t.owner=nid;});});
+    if(gameState){if(gameState.xp&&gameState.xp[old]!=null){gameState.xp[nid]=(gameState.xp[nid]||0)+gameState.xp[old];delete gameState.xp[old];}if(gameState.equip&&gameState.equip[old]){gameState.equip[nid]=gameState.equip[old];delete gameState.equip[old];}}
+    a.id=nid;if(!removedIds.includes(old))removedIds.push(old);changed=true;}}});
+  if(changed){ensureAgents();renderRoster();if(ELECTRON&&window.munder.saveAgents){try{window.munder.saveAgents({agents:roster,removed:removedIds});}catch(e){}removedIds=[];}persistProjects();}}
+const COLORS={architect:"#c0392b",client:"#1f9aa8",scoper:"#4aa3ff",taskwriter:"#3fbf7d",estimator:"#e0962f",scheduler:"#9a6ad0",unreal:"#36b07a",gamedesign:"#d65aa0",simulation:"#4a86d6"};
+const PCOL={P0:"#ff5147",P1:"#ff9b3d",P2:"#4aa3ff",P3:"#8a93ad"};
+function epicColor(name){if(!name)return '#5a6478';return 'hsl('+(hashStr('epic_'+name)%360)+',46%,52%)';}   // category tag colour, stable per epic name
+function epicList(){const s=[];(state.tasks||[]).forEach(t=>{if(t.epic&&s.indexOf(t.epic)<0)s.push(t.epic);});return s;}
+const busyLabel={architect:"ROUTING",client:"INTAKE",scoper:"SCOPING",taskwriter:"DRAFTING",estimator:"SIZING",scheduler:"SLOTTING",unreal:"BUILDING",gamedesign:"DESIGNING",simulation:"MODELING"};
+// Fresh install: only the Architect/Manager exists. The user creates the rest of the team
+// (each with their own details + folder for rules/.md) via MANAGE.
+const DEFAULT_ROSTER=[
+  {id:"architect",name:"Morgan Reyes",role:"Manager",model:"opus",color:COLORS.architect,folders:[]}];
+const CHATTER=["Coffee?","Big plan today.","See the memo?","P0 again?!","I love deadlines.","Need more hours.","Standup in 5.","It compiles!","Scope creep…","Bears. Beets.","Brilliant.","Back to my desk."];
+const STANDUP=["Let's plan this.","Who owns it?","Sizing it now.","Risk: high.","Day one…","Ship it.","Deps first."];
+const WIT_TASK=["{t}? almost.","still on {t}.","{t} won't ship itself.","deep in {t}.","{t}: so close.","wrangling {t}.","{t} again…"];
+const WIT_BUSY=["in the zone.","busy, busy.","another sprint…","coffee→code→repeat.","do not disturb 😅","heads down.","my calendar's a crime scene."];
+const WIT_IDLE=["zero tickets. suspicious.","is it Friday yet?","idle hands, full mug.","waiting on the brief…","peak nap conditions.","no tasks, no problems.","I'd plan something… nah."];
+function quip(a){const tasks=state.tasks||[];if(!tasks.length)return pick(WIT_IDLE);const mine=tasks.filter(t=>t.owner===a.id);if(mine.length&&Math.random()<0.6)return pick(WIT_TASK).replace('{t}',(pick(mine).title||'the task').toLowerCase());return pick(WIT_BUSY);}
+const SKIN=["#f3d2b0","#f1c79b","#e8b890","#d79a6a","#c98650","#a86a42","#8d5a36","#6e4a2e"];
+const HAIRC=["#241a12","#3a2a1a","#5a3a22","#6a4a28","#8a6a3a","#b0894a","#caa05a","#9a9a9a","#2a2030","#7a2f2f"];
+const WOODS=["#7a4f2a","#8a5a32","#6a4322","#9a6a3a","#5f4a3a","#84603a"];
+const SCREENS=["#6fb6d6","#7ec8a0","#d6a86f","#b58ad6","#d68a9a","#8a9ad6"];
+
+function emptyState(name){return {project:name||"Project",request:{title:"Waiting for a request…",why:"File a feature in the terminal and the team will plan it onto the whiteboard.",priority:"P1"},docPath:"",capacityHoursPerDay:6,tasks:[],days:[],distributor:"architect"};}
+function defaultRoster(){return DEFAULT_ROSTER.map(a=>({...a,folders:(a.folders||[]).slice()}));}
+let projects=[], activeProj=null, projData={};   // fresh start: no projects until the user creates one
+let state=emptyState('—'), roster=defaultRoster(), removedIds=[], links={refs:[]}, projHit=[];
+function syncActive(){if(activeProj){const pd=projData[activeProj]||(projData[activeProj]={});pd.state=state;}}  // roster is shared across projects; only the tasks/state are per-project
+function projName(id){const p=projects.find(x=>x.id===(id||activeProj));return p?p.name:'—';}
+function persistProjects(){syncActive();if(ELECTRON&&window.munder.saveProjects)window.munder.saveProjects({projects,active:activeProj,data:projData,baseRoster:roster,game:gameState});}
+function switchProject(id){if(!id||id===activeProj)return;syncActive();activeProj=id;let pd=projData[id];if(!pd)pd=projData[id]={state:emptyState(projName(id))};state=pd.state;ensureAgents();cards={};applyState(state);renderRoster();if(ELECTRON&&window.munder.saveState)window.munder.saveState({state});persistProjects();}  // roster stays shared — the team never changes between projects
+function createProject(name,color,context,links){const id='p'+Date.now().toString(36);const nm=name||('Project '+(projects.length+1));projects.push({id,name:nm,color:color||'#46d6c0'});
+  projData[id]={state:emptyState(nm)};if(context&&context.trim())projData[id].context=context.trim();if(links&&links.length)projData[id].links=links;persistProjects();switchProject(id);}  // new project = new tasks only; the shared team carries over
+function openEditProject(pid){const p=projects.find(x=>x.id===pid);if(!p)return;const pd=projData[pid]||(projData[pid]={state:emptyState(p.name)});const linksArr=pd.links||(pd.links=[]);
+  const commitFields=()=>{const n=document.getElementById('epName');if(n)p.name=n.value.trim()||p.name;const c=document.getElementById('epColor');if(c)p.color=c.value;const x=document.getElementById('epCtx');if(x)pd.context=x.value;if(pid===activeProj)state.project=p.name;};
+  const linkHtml=linksArr.length?linksArr.map((l,i)=>'<div class="f2" style="display:flex;gap:6px;align-items:center;margin:2px 0"><span class="chip" style="background:#36b07a">link</span><a href="#" class="lnopen" data-u="'+esc(l.url)+'" style="flex:1;color:var(--teal);font-size:13px;word-break:break-all">'+esc(l.label||l.url)+'</a><button class="mini red lnrm" data-i="'+i+'">✕</button></div>').join(''):'<div class="why">no links yet</div>';
+  openModal('EDIT PROJECT',
+    '<div class="kv"><b>NAME</b></div><input class="f" id="epName" value="'+esc(p.name)+'"/><div class="row2" style="margin-top:6px"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">COLOR</b><input class="f" id="epColor" type="color" value="'+esc(p.color||'#46d6c0')+'" style="width:40px;padding:1px"/></div>'+
+    '<div class="kv" style="margin-top:6px"><b>CONTEXT</b> <span class="why" style="margin:0">the team uses this when planning</span></div><textarea id="epCtx" rows="4" placeholder="what this product/project is, goals, constraints">'+esc(pd.context||'')+'</textarea>'+
+    '<div class="sect" style="margin-top:8px">REFERENCE LINKS — docs / task boards</div>'+linkHtml+'<div class="row2"><input class="f" id="lnLabel" placeholder="label" style="flex:1"/><input class="f" id="lnUrl" placeholder="https://…" style="flex:1.5"/><button class="mini" id="lnAdd">+ LINK</button></div>'+
+    '<div class="row2" style="margin-top:8px"><button class="mini gold" id="epSave">SAVE</button><button class="mini" id="epBack">‹ PROJECTS</button> <span id="epStatus" style="font-size:13px;color:var(--ink-soft)"></span></div>');
+  document.getElementById('epSave').onclick=()=>{commitFields();persistProjects();renderRoster();document.getElementById('epStatus').textContent='Saved ✓';};
+  document.getElementById('epBack').onclick=openProjects;
+  document.getElementById('lnAdd').onclick=()=>{const u=document.getElementById('lnUrl').value.trim();if(!u)return;commitFields();linksArr.push({label:document.getElementById('lnLabel').value.trim()||u,url:u});persistProjects();openEditProject(pid);};
+  mbody.querySelectorAll('.lnrm').forEach(b=>b.onclick=()=>{commitFields();linksArr.splice(+b.getAttribute('data-i'),1);persistProjects();openEditProject(pid);});
+  mbody.querySelectorAll('.lnopen').forEach(a=>a.onclick=e=>{e.preventDefault();const u=a.getAttribute('data-u');if(ELECTRON&&window.munder.openExternal)window.munder.openExternal(u);else window.open(u,'_blank');});}
+function deleteProject(id){if(projects.length<1)return;projects=projects.filter(p=>p.id!==id);delete projData[id];if(activeProj===id){activeProj=(projects[0]&&projects[0].id)||null;const pd=activeProj?projData[activeProj]:null;state=pd?pd.state:emptyState('—');ensureAgents();cards={};applyState(state);renderRoster();}persistProjects();}
+function sw(id){const p=projects.find(x=>x.id===id);return p?p.color:'#46d6c0';}
+function openCreateProject(){openModal('NEW PROJECT','<div class="kv"><b>NAME</b></div><input class="f" id="pjName" placeholder="e.g. Mobile App"/><div class="row2" style="margin-top:6px"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">COLOR</b><input class="f" id="pjColor" type="color" value="#46d6c0" style="width:40px;padding:1px"/></div><div class="kv" style="margin-top:6px"><b>CONTEXT</b> <span class="why" style="margin:0">the team uses this when planning</span></div><textarea id="pjCtx" rows="3" placeholder="what this product/project is, goals, constraints"></textarea><div class="kv" style="margin-top:6px"><b>REFERENCE LINKS</b> <span class="why" style="margin:0">one per line — "label | https://…"</span></div><textarea id="pjLinks" rows="2" placeholder="Design doc | https://...&#10;Task board | https://..."></textarea><div class="why" style="margin-top:6px">Each project keeps its own tasks (kanban); the team is shared. Edit context &amp; links later in PROJECTS.</div><div class="row2"><button class="mini gold" id="pjCreate">CREATE PROJECT ▸</button></div>');
+  document.getElementById('pjCreate').onclick=()=>{const n=document.getElementById('pjName').value.trim()||('Project '+(projects.length+1));const c=document.getElementById('pjColor').value;const ctx=document.getElementById('pjCtx').value;
+    const links=document.getElementById('pjLinks').value.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const i=l.indexOf('|');return i>=0?{label:l.slice(0,i).trim(),url:l.slice(i+1).trim()}:{label:l,url:l};});
+    closeModal();createProject(n,c,ctx,links);openPanel('board');};}
+function projContext(){const pd=projData[activeProj]||{};let s='';if(pd.context&&pd.context.trim())s+='\n\nProject context: '+pd.context.trim();if(pd.links&&pd.links.length)s+='\nRelated docs/boards: '+pd.links.map(l=>(l.label||l.url)+' — '+l.url).join(' ; ');return s;}
+function allProjectsContext(){if(!projects.length)return '';let s='\n\nOffice portfolio (all projects):';projects.forEach(p=>{const pd=projData[p.id]||{};s+='\n- '+p.name+(p.id===activeProj?' (current)':'')+(pd.context&&pd.context.trim()?': '+pd.context.trim().slice(0,200):'');});return s;}
+function openNotes(){if(!activeProj){openCreateProject();return;}cleanupSpecialistNotes();const pd=projData[activeProj]||(projData[activeProj]={});const notes=pd.notes||(pd.notes=[]);pd.noteNew=0;noteBadge();
+  const list=notes.length?notes.map((n,i)=>({n,i})).reverse().map(o=>'<div class="notecard"><div class="noterow"><span class="notets">'+new Date(o.n.ts).toLocaleString()+'</span>'+(o.n.agent?'<button class="mini gold ncreate" data-i="'+o.i+'">＋ CREATE AGENT</button>':'')+'<button class="mini red nrm" data-i="'+o.i+'">✕</button></div><div class="desc" style="background:transparent;border:0;padding:0;margin:4px 0 0">'+mdLite(o.n.text)+'</div></div>').join(''):'<div class="why">No notes yet for this project.</div>';
+  const sug=pd.lastSuggestion?('<div class="sect" style="margin-top:8px">ARCHITECT SUGGESTS</div><div class="desc">'+mdLite(pd.lastSuggestion)+'</div>'):'';
+  openModal('DAY NOTES — '+projName(),
+    '<div class="kv"><b>ADD A NOTE</b> — saved to project memory</div><textarea id="ntInput" rows="2" placeholder="what happened today / what to remember / what to check…"></textarea><div class="row2"><button class="mini gold" id="ntAddNote">SAVE NOTE</button><button class="mini" id="ntAsk">ASK THE OFFICE ▸</button> <span id="ntStatus" style="font-size:13px;color:var(--ink-soft)"></span></div>'+sug+
+    '<div class="sect" style="margin-top:8px">NOTES ('+notes.length+')</div><div class="hist">'+list+'</div><div class="why" style="margin-top:6px">Edit project context &amp; reference links in PROJECTS → EDIT.</div>');
+  document.getElementById('ntAddNote').onclick=()=>{const t=document.getElementById('ntInput').value.trim();if(!t)return;notes.push({ts:Date.now(),text:t});persistProjects();if(ELECTRON&&window.munder.appendAgentMemory)window.munder.appendAgentMemory({agentId:'project-'+activeProj,entry:{ts:Date.now(),text:'note: '+t}});openNotes();};
+  document.getElementById('ntAsk').onclick=()=>{askSuggestions();const s=document.getElementById('ntStatus');if(s)s.textContent='Asking the Architect… see the terminal.';};
+  mbody.querySelectorAll('.ncreate').forEach(b=>b.onclick=()=>{const n=notes[+b.getAttribute('data-i')];if(n&&n.agent){closeModal();openCreateAgent(n.agent);}});
+  mbody.querySelectorAll('.nrm').forEach(b=>b.onclick=()=>{notes.splice(+b.getAttribute('data-i'),1);persistProjects();openNotes();});}
+function askSuggestions(){const pd=projData[activeProj]||{};const notes=(pd.notes||[]).map(n=>'- '+n.text).join('\n')||'(none yet)';const sum=summaryText();
+  const prompt='You are the Architect/Manager of project "'+projName()+'".'+projContext()+'\n\nThe user logged these notes about their day/work:\n'+notes+'\n\nThe kanban board right now: '+sum+'\n\nReview the notes and the board, then suggest concretely: what to plan next, what needs checking/verifying, and how the team could work better. Refer to teammates by their NAME (never raw ids or dept codes). Keep it tight as bullet points. You may propose specific new tasks.'+teamConstraint();
+  if(ELECTRON){suggestMode=true;suggestBuf='';planning=true;acceptState=true;runProj=activeProj;termLine('[suggestions] asking the Architect to review notes + board…','agent');window.munder.runPrompt({prompt,model:architectModel()}).then(r=>{if(!r||!r.ok){suggestMode=false;planning=false;termLine('failed.','err');}}).catch(()=>{suggestMode=false;planning=false;});}
+  else termLine('Suggestions run in the desktop app (Claude on your account).','dim');}
+/* ---- team roundtable: each agent answers, the Manager synthesizes a note ---- */
+let roundtable=null;
+function openRoundtable(){if(!activeProj){openCreateProject();return;}
+  openModal('TEAM ROUNDTABLE — '+projName(),'<div class="kv"><b>ASK THE TEAM</b> <span class="why" style="margin:0">each agent answers from their role; the Manager reconciles &amp; polishes it into one note</span></div><textarea id="rtQ" rows="3" placeholder="e.g. What should we prioritise next? How should we approach the onboarding flow?"></textarea><div class="row2"><button class="mini gold" id="rtGo">ASK THE TEAM ▸</button> <span id="rtStatus" style="font-size:13px;color:var(--ink-soft)">'+(roundtable?'a roundtable is already running…':'')+'</span></div>');
+  const g=document.getElementById('rtGo');if(g)g.onclick=()=>{const q=document.getElementById('rtQ').value.trim();if(!q)return;startRoundtable(q);closeModal();};}
+function startRoundtable(question){if(!ELECTRON){termLine('Roundtable runs in the desktop app.','dim');return;}
+  if(roundtable){toast('A roundtable is already running','err');return;}
+  const panel=roster.filter(a=>a.id!=='client'&&a.id!=='architect');
+  if(!panel.length){toast('Add some specialists to the team first','err');return;}
+  roundtable={question,projId:activeProj,pending:{},answers:{},phase:'gather',synthBuf:''};
+  panel.forEach(a=>{roundtable.pending[a.id]=true;busyUntil[a.id]=performance.now()-t0+600000;pushHist(a.id,'roundtable: '+question.slice(0,40));
+    const prompt='Team roundtable for project "'+projName()+'".'+projContext()+allProjectsContext()+'\n\nThe Manager asks the team:\n"'+question+'"\n\nAs '+(a.name||a.id)+' ('+(a.role||NICK[a.id]||'')+'), give YOUR opinion from your specialty — 3–6 concise bullets with concrete, specific points, plus any risks or dependencies you see. No preamble.';
+    window.munder.runAgent({agentId:a.id,name:a.name,role:a.role,model:a.model,rules:a.rules,dirs:a.folders||[],prompt}).then(r=>{if(!r||!r.ok)rtDone(a.id);}).catch(()=>rtDone(a.id));});
+  termLine('[roundtable] asked '+panel.length+' agents: '+question,'agent');toast('Roundtable started — '+panel.length+' agents answering','ok');}
+function rtDone(id){if(!roundtable||!roundtable.pending[id])return;delete roundtable.pending[id];busyUntil[id]=performance.now()-t0;
+  if(roundtable.phase==='gather'&&Object.keys(roundtable.pending).length===0)startRtSynthesis();}
+function startRtSynthesis(){const rt=roundtable;if(!rt)return;rt.phase='synth';
+  let op='';Object.keys(rt.answers).forEach(id=>{const a=roster.find(x=>x.id===id)||{};op+='\n\n### '+(a.name||id)+' ('+(a.role||NICK[id]||'')+')\n'+(rt.answers[id]||'(no answer)');});
+  busyUntil['architect']=performance.now()-t0+600000;
+  const prompt='You are the Manager. The team held a roundtable on:\n"'+rt.question+'"'+projContext()+allProjectsContext()+'\n\nIndividual opinions:'+op+'\n\nReconcile and POLISH these views into ONE note — where they agree, where they correct/refine each other — and decide. Output EXACTLY this markdown:\n## Summary\n(one short paragraph: the gist + the decision)\n## Discussion\n(concise bullets: key points, who raised what, how they refine each other)\n## Recommendation\n(concrete next steps / what to plan). Refer to teammates by NAME, never raw ids or dept codes. No preamble.'+teamConstraint();
+  window.munder.runPrompt({prompt,model:architectModel()}).then(r=>{if(!r||!r.ok)rtSave();}).catch(()=>rtSave());
+  termLine('[roundtable] Manager synthesizing…','agent');}
+function rtSave(){const rt=roundtable;roundtable=null;if(!rt)return;busyUntil['architect']=performance.now()-t0;
+  const body=(rt.synthBuf||'').trim()||('## Summary\nThe team weighed in on: '+rt.question+'\n\n## Discussion'+Object.keys(rt.answers).map(id=>'\n\n### '+((roster.find(a=>a.id===id)||{}).name||id)+'\n'+rt.answers[id]).join(''));
+  addProjectNote(rt.projId,'🗣️ Roundtable — '+rt.question+'\n\n'+body,true);
+  notify('Roundtable ready','The team discussion is saved to Notes.','ok','architect');}
+function openProjects(){const rows=projects.map(p=>{const ctx=(projData[p.id]&&projData[p.id].context)?'<div class="why" style="margin:0 0 0 24px;font-size:12px">'+esc((projData[p.id].context||'').slice(0,90))+((projData[p.id].context||'').length>90?'…':'')+'</div>':'';
+    return '<div data-id="'+p.id+'"><div class="row2" style="gap:6px;align-items:center"><span style="width:16px;height:16px;border-radius:4px;background:'+p.color+';border:2px solid #0008;display:inline-block"></span><b style="flex:1">'+esc(p.name)+(p.id===activeProj?' <span class="pill">ACTIVE</span>':'')+'</b><button class="mini pjedit">✎ EDIT</button><button class="mini pjsw">OPEN</button>'+(projects.length>1?'<button class="mini red pjdel">✕</button>':'')+'</div>'+ctx+'</div>';}).join('');
+  openModal('PROJECTS — '+projects.length,rows+'<div class="row2" style="margin-top:8px"><button class="mini gold" id="pjNew">+ NEW PROJECT</button></div><div class="why">Each project has its own tasks &amp; context (edit anytime). The team is shared. Projects also appear in the break room.</div>');
+  mbody.querySelectorAll('.pjsw').forEach(b=>b.onclick=()=>{switchProject(b.closest('[data-id]').getAttribute('data-id'));closeModal();openPanel('board');});
+  mbody.querySelectorAll('.pjedit').forEach(b=>b.onclick=()=>openEditProject(b.closest('[data-id]').getAttribute('data-id')));
+  mbody.querySelectorAll('.pjdel').forEach(b=>b.onclick=()=>{deleteProject(b.closest('[data-id]').getAttribute('data-id'));openProjects();});
+  document.getElementById('pjNew').onclick=openCreateProject;}
+const GCW=32, GNAMEW=300, DAYMS=86400000;
+function openGantt(){
+  let gfilter=ganttFilter; if(gfilter!=='all'&&!projects.find(p=>p.id===gfilter))gfilter=activeProj;
+  const baseProj=gfilter==='all'?activeProj:gfilter;
+  const bpState=(baseProj===activeProj)?state:((projData[baseProj]&&projData[baseProj].state)||state);
+  const cap=bpState.capacityHoursPerDay||6;
+  let entries=[];
+  if(gfilter==='all')projects.forEach(p=>(projTasksOf(p.id)||[]).forEach(t=>entries.push({t,pid:p.id})));
+  else (projTasksOf(gfilter)||[]).forEach(t=>entries.push({t,pid:gfilter}));
+  const tasks=entries.map(e=>e.t);
+  const sdOf=t=>Math.max(1,Math.round(t.startDay||t.day||1));
+  const durOf=t=>Math.max(1,Math.round(t.durationDays||Math.ceil((t.estimateHours||cap)/cap)));
+  const pad=n=>String(n).padStart(2,'0');
+  const base=bpState.startDate?new Date(bpState.startDate+'T00:00:00'):new Date(); base.setHours(0,0,0,0);
+  const dateAt=d=>{const x=new Date(base);x.setDate(x.getDate()+(d-1));return x;};
+  const iso=x=>x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate());
+  const WD=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  let N=7; tasks.forEach(t=>{N=Math.max(N,sdOf(t)+durOf(t)+1);}); N=Math.min(N,120);
+  const now=new Date(); now.setHours(0,0,0,0); const todayDay=Math.round((now-base)/DAYMS)+1;
+  // header strip of real dates
+  let head='<div class="gcorner" style="width:'+GNAMEW+'px">TASK · '+tasks.length+'</div>';
+  let curMonth=-1;
+  for(let d=1;d<=N;d++){const x=dateAt(d),wk=x.getDay()===0||x.getDay()===6,td=d===todayDay,m=x.getMonth();
+    const mlab=m!==curMonth?x.toLocaleString('en',{month:'short'}):''; curMonth=m;
+    head+='<div class="ghcell'+(wk?' wk':'')+(td?' tdy':'')+'" style="width:'+GCW+'px">'+WD[x.getDay()]+'<br><b>'+x.getDate()+'</b><br>'+mlab+'</div>';}
+  // task rows with absolute draggable bars
+  let rows='';
+  tasks.forEach((t,i)=>{const sd=sdOf(t),dur=durOf(t),col=PCOL[t.priority]||'#888',end=dateAt(sd+dur-1);
+    const today=(todayDay>=1&&todayDay<=N)?'<div class="gtoday" style="left:'+((todayDay-1)*GCW)+'px"></div>':'';
+    rows+='<div class="grow">'
+      +'<div class="gnm" style="width:'+GNAMEW+'px">'
+        +'<div class="t">'+(gfilter==='all'?'<span class="kc-owner" style="background:'+sw(entries[i].pid)+'">'+esc((projName(entries[i].pid)||'').slice(0,8))+'</span> ':'')+'<span class="kc-owner" style="background:'+ownerColor(t.owner)+'">'+esc(ownerName(t.owner))+'</span> <b>'+esc((t.id||'').toUpperCase())+'</b> '+esc(t.title||'')+'</div>'
+        +'<div class="e"><input class="dt" type="date" value="'+iso(dateAt(sd))+'" data-i="'+i+'" data-k="start" title="start date"><span style="color:var(--ink-soft)">→</span><input class="dt" type="date" value="'+iso(end)+'" data-i="'+i+'" data-k="end" title="due date"><input class="dy" type="number" min="1" value="'+dur+'" data-i="'+i+'" data-k="days" title="duration (days)"><span class="est">'+(t.estimateHours||'?')+'h · '+(t.priority||'')+'</span></div>'
+      +'</div>'
+      +'<div class="gtrack" style="width:'+(N*GCW)+'px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent '+(GCW-1)+'px,var(--line) '+(GCW-1)+'px,var(--line) '+GCW+'px)">'+today
+        +'<div class="gbar" data-i="'+i+'" style="left:'+((sd-1)*GCW)+'px;width:'+(dur*GCW)+'px;background:'+col+'"><span class="gblbl">'+dur+'d</span><div class="ghandle"></div></div>'
+      +'</div></div>';});
+  if(!tasks.length)rows='<div class="grow"><div class="gnm" style="width:100%;padding:16px">No tasks in this project yet — file a request, or add tasks on the board.</div></div>';
+  const fopts='<option value="all"'+(gfilter==='all'?' selected':'')+'>All projects</option>'+projects.map(p=>'<option value="'+p.id+'"'+(gfilter===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+  openModal('GANTT — '+(gfilter==='all'?'All projects':projName(gfilter)),
+    '<div class="gbar2"><span style="font-size:13px;color:var(--ink-soft)">Project</span><select class="f" id="gFilter" style="width:auto">'+fopts+'</select><span style="font-size:13px;color:var(--ink-soft)">Start</span><input class="f" type="date" id="gStart" value="'+iso(base)+'" style="width:auto"'+(gfilter==='all'?' disabled':'')+'><span class="why">Drag a bar to move it · drag its right edge to resize · or edit the dates &amp; duration. Saves automatically.</span></div>'
+    +'<div class="gwrap"><div class="ggrid"><div class="ghead">'+head+'</div>'+rows+'</div></div>',true);
+  const commit=()=>{syncActive();if(ELECTRON&&window.munder.saveState){try{window.munder.saveState({state});}catch(e){}}applyState(state);persistProjects();openGantt();};
+  const gf=document.getElementById('gFilter'); if(gf)gf.onchange=e=>{ganttFilter=e.target.value;openGantt();};
+  const gs=document.getElementById('gStart'); if(gs)gs.onchange=e=>{if(e.target.value){bpState.startDate=e.target.value;commit();}};
+  // date / duration inputs
+  mbody.querySelectorAll('.gnm .e input').forEach(inp=>inp.onchange=()=>{const t=tasks[+inp.getAttribute('data-i')];if(!t)return;const k=inp.getAttribute('data-k');
+    if(k==='days'){t.durationDays=Math.max(1,parseInt(inp.value,10)||1);}
+    else{const v=inp.value;if(!v)return;const d=new Date(v+'T00:00:00');const dayNo=Math.round((d-base)/DAYMS)+1;
+      if(k==='start'){const old=sdOf(t),dur=durOf(t);t.startDay=Math.max(1,dayNo);t.day=t.startDay;t.durationDays=dur;}
+      else{const start=sdOf(t);t.durationDays=Math.max(1,dayNo-start+1);}}
+    commit();});
+  // drag bars (move + resize)
+  let drag=null;
+  mbody.querySelectorAll('.gbar').forEach(bar=>{
+    bar.addEventListener('mousedown',ev=>{const resize=ev.target.classList.contains('ghandle');const i=+bar.getAttribute('data-i'),t=tasks[i];if(!t)return;
+      drag={bar,t,mode:resize?'resize':'move',x0:ev.clientX,sd0:sdOf(t),dur0:durOf(t)};drag.sd=drag.sd0;drag.dur=drag.dur0;bar.classList.add('drag');ev.preventDefault();
+      document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);});});
+  function onMove(ev){if(!drag)return;const delta=Math.round((ev.clientX-drag.x0)/GCW);
+    if(drag.mode==='move'){drag.sd=Math.max(1,drag.sd0+delta);drag.bar.style.left=((drag.sd-1)*GCW)+'px';}
+    else{drag.dur=Math.max(1,drag.dur0+delta);drag.bar.style.width=(drag.dur*GCW)+'px';drag.bar.querySelector('.gblbl').textContent=drag.dur+'d';}}
+  function onUp(){if(!drag)return;const t=drag.t;if(drag.mode==='move'){t.startDay=drag.sd;t.day=drag.sd;t.durationDays=drag.dur0;}else{t.durationDays=drag.dur;}drag.bar.classList.remove('drag');const changed=drag;drag=null;
+    document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);commit();void changed;}}
+let cards={}, busyUntil={}, busyWork={}, busyBoard={}, activeAgent=null, planning=false, t0=performance.now(), lastT=t0;
+let A={}, LAYOUT={desks:{},homes:{}}, standupUntil=0, nextStandup=120000, lastStandup='', suggestMode=false, suggestBuf='', boardFilter='', ganttFilter='', epicFilter='';
+let nextChat=8000, taskReturnPanel=null, standupPhase=null;
+let runProj=null, acceptState=false;   // which project a run targets; ignore state pushes until a run is launched (prevents the startup push clobbering a project)
+let stageCaps={};   // active stage runs keyed by runner agent id → captures the agent's output to write back into the task
+let wipStarted={};   // projId/taskId (and rv:projId/taskId:step) → a run was already kicked off (avoid duplicates)
+function clearTaskGuards(proj,id){delete wipStarted[proj+'/'+id];for(let i=0;i<8;i++)delete wipStarted['rv:'+proj+'/'+id+':'+i];}   // clear WIP + all review-step guards so the task can run again
+let autoFlow=true;   // when on, agents auto-pull assigned backlog tasks and run the WIP/Review stages
+let termBuffers={main:[]}, agentHist={};
+let selAgent=null, agentSub='state', agentsView='roster';
+
+/* ---- canvas ---- */
+const LOGW=460, LOGH=252, SCALE=4, CORRY=127;
+const cv=document.getElementById('floor'), ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
+function P(x,y,w,h,c){const s=SCALE;ctx.fillStyle=c;ctx.fillRect(Math.round(x*s),Math.round(y*s),Math.max(1,Math.round(w*s)),Math.max(1,Math.round(h*s)));}
+function txt(str,x,y,c,sz){const s=SCALE;ctx.fillStyle=c;ctx.font=((sz||6)*s)+'px "Silkscreen",monospace';ctx.textBaseline="top";ctx.textAlign="left";ctx.fillText(str,Math.round(x*s),Math.round(y*s));}
+function logicalWidth(s,sz){ctx.font=((sz||6)*SCALE)+'px "Silkscreen",monospace';return ctx.measureText(s).width/SCALE;}
+function fitText(s,maxW,sz){let t=s;if(logicalWidth(t,sz)<=maxW)return t;while(t.length>1&&logicalWidth(t+'…',sz)>maxW)t=t.slice(0,-1);return t+'…';}
+// shrink the font from maxSz down to minSz to fit maxW; only ellipsize if it still won't fit at minSz
+function fitBox(str,maxW,maxSz,minSz){maxSz=maxSz||6;minSz=minSz||4;let sz=maxSz;while(sz>minSz&&logicalWidth(str,sz)>maxW)sz--;let t=str;if(logicalWidth(t,sz)>maxW)t=fitText(str,maxW,sz);return {t:t,sz:sz,w:logicalWidth(t,sz)};}
+function txtFit(str,x,y,c,maxW,maxSz,minSz){const f=fitBox(str,maxW,maxSz,minSz);txt(f.t,x,y,c,f.sz);return f;}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function hashStr(s){let h=2166136261;for(let i=0;i<(s||'').length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function esc(s){return (''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---- floor plan (lounge instead of reception) ---- */
+const ENV={x:6,y:6,w:448,h:240};
+const ROOMS={
+  conference:{x:9,y:9,w:150,h:97,floor:"#41527c",wall:"#5e72a0",label:"CONFERENCE",door:{x:80,y:106}},
+  breakroom :{x:165,y:9,w:189,h:97,floor:"#5a4d39",wall:"#8a634a",label:"BREAK ROOM",door:{x:255,y:106}},
+  toilet    :{x:360,y:9,w:94,h:97,floor:"#49555f",wall:"#788a93",label:"WC",door:{x:405,y:106}},
+  lounge    :{x:9,y:148,w:120,h:98,floor:"#4d4774",wall:"#7e689c",label:"LOUNGE",door:{x:65,y:148}},
+  office    :{x:135,y:148,w:80,h:98,floor:"#584255",wall:"#8e687c",label:"MANAGER",door:{x:175,y:148}},
+  bullpen   :{x:221,y:148,w:233,h:98,floor:"#3d4b69",wall:"#627ea4",label:"OPEN PLAN",door:{x:330,y:148}}
+};
+const WB={x:26,y:19,w:116,h:46}, BOARD_FRONT={x:120,y:94};   // kanban board — centered on the conference back wall
+const GBD={x:224,y:154,w:92,h:18};   // open-office gantt board — on the back wall, left of the door (x330), above the desks
+const WALLH=15;                       // taller camera-facing back wall (room for wall-mounted boards)
+function roomAt(x,y){for(const k in ROOMS){const r=ROOMS[k];if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)return k;}return null;}
+function computeLayout(){const desks={},homes={};
+  homes.architect={fx:ROOMS.office.x+ROOMS.office.w/2,fy:ROOMS.office.y+90};  // seated in front of the manager desk (not on it)
+  homes.client={fx:ROOMS.lounge.x+ROOMS.lounge.w-18,fy:ROOMS.lounge.y+78};  // clear lounge spot, not on the couches
+  const others=roster.filter(a=>a.id!=='architect'&&a.id!=='client');
+  const reg=ROOMS.bullpen,pad=12,n=Math.max(1,others.length),cols=Math.min(4,Math.max(2,Math.ceil(Math.sqrt(n))));
+  const rows=Math.ceil(n/cols),cw=(reg.w-pad*2)/cols,top=reg.y+WALLH+6,ch=(reg.h-WALLH-18)/rows,botLimit=reg.y+reg.h-12;
+  others.forEach((a,i)=>{const c=i%cols,r=Math.floor(i/cols),cx=reg.x+pad+c*cw+cw/2,cy=top+r*ch+ch*0.28;
+    desks[a.id]={dx:cx-15,dy:cy};homes[a.id]={fx:cx,fy:Math.min(cy+25,botLimit)};});  // desk on the row line, person seated lower/in front of it (not on the monitor), kept inside the room
+  LAYOUT={desks,homes};}
+function genApp(a){const h=hashStr(a.id+'_'+(a.name||'')+'_'+(a.appSeed||''));return {skin:SKIN[h%SKIN.length],hair:HAIRC[(h>>3)%HAIRC.length],style:(h>>6)%5,glasses:((h>>9)&1)===1,beard:((h>>10)&3)===0,tie:((h>>12)&1)===1,shirt:a.color||COLORS[a.id]||"#5a6a8a"};}
+function genDeskStyle(id){const h=hashStr('d_'+id);return {wood:WOODS[h%WOODS.length],screen:SCREENS[(h>>4)%SCREENS.length],acc:(h>>8)%4};}
+function drawPortrait(cnv,app,id){const c=cnv.getContext('2d');c.imageSmoothingEnabled=false;const px=cnv.width/12;
+  const F=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(Math.round(x*px),Math.round(y*px),Math.ceil(w*px),Math.ceil(h*px));};
+  const hair=app.hair,skin=app.skin,dark='#16100a',white='#f3efe2',bg='#1d2436',hl=shade(hair,1.3),sh=shade(skin,0.84),br=shade(hair,0.8);
+  F(0,0,12,12,bg);                                                                       // backdrop
+  F(2,10,8,2,app.shirt);F(1,11,10,1,shade(app.shirt,0.75));F(3,9,6,1,white);            // shoulders + collar
+  if(app.tie)F(5,9,2,3,'#b9332e');
+  F(5,8,2,2,sh);                                                                         // neck
+  F(3,2,6,7,skin);F(3,2,1,1,bg);F(8,2,1,1,bg);F(3,8,1,1,bg);F(8,8,1,1,bg);              // rounded head
+  F(7,2,2,6,sh);                                                                         // right-side face shade
+  F(2,4,1,2,skin);F(9,4,1,2,skin);                                                       // ears
+  // hair — matches the sprite's drawHair styles
+  if(app.style===2){F(3,2,6,1,hair);F(3,2,3,1,hl);F(2,3,1,2,hair);F(9,3,1,2,hair);}     // balding
+  else{F(3,1,6,2,hair);F(3,1,3,1,hl);F(2,2,1,3,hair);F(9,2,1,3,hair);}                  // default
+  if(app.style===1){F(2,2,1,6,hair);F(9,2,1,6,hair);}                                    // long
+  if(app.style===3){F(3,0,1,2,hair);F(5,0,1,2,hair);F(7,0,1,2,hair);F(8,0,1,2,hair);}   // spiky
+  if(app.style===4){F(5,-1,2,2,hair);}                                                   // bun
+  // brows / glasses + eyes
+  if(app.glasses){F(3,4,3,1,dark);F(6,4,3,1,dark);F(5,4,1,1,dark);}else{F(4,4,1,1,br);F(7,4,1,1,br);}
+  F(4,5,1,1,dark);F(7,5,1,1,dark);                                                       // eyes
+  F(6,6,1,1,sh);F(5,7,3,1,'#9a5a4a');                                                    // nose + mouth
+  if(app.beard){F(3,7,6,1,hair);F(4,8,4,1,hair);}
+  if(id==='client'){F(9,5,1,3,'#222');F(8,4,1,1,'#222');}}                               // headset
+function ensureAgents(){computeLayout();
+  roster.forEach(a=>{const home=LAYOUT.homes[a.id]||{fx:200,fy:CORRY};a.app=genApp(a); // one look, shared by sprite + portrait
+    if(!A[a.id])A[a.id]={id:a.id,x:home.fx,y:home.fy,path:[],speed:0.5,face:1,state:'idle',nextIdle:0,bubble:null,bubbleUntil:0,walk:0,app:a.app};
+    else A[a.id].app=a.app;
+    A[a.id].home=home;});
+  Object.keys(A).forEach(id=>{if(!roster.find(a=>a.id===id))delete A[id];});}
+
+/* ---- movement ---- */
+function doorOf(x,y){const r=roomAt(x,y);return r?ROOMS[r].door:null;}
+function routeTo(a,tx,ty){const pts=[],sd=doorOf(a.x,a.y),dd=doorOf(tx,ty);
+  if(sd){pts.push({x:sd.x,y:sd.y});pts.push({x:sd.x,y:CORRY});}else pts.push({x:a.x,y:CORRY});
+  pts.push({x:(dd?dd.x:tx),y:CORRY});if(dd)pts.push({x:dd.x,y:dd.y});pts.push({x:tx,y:ty});a.path=pts;}
+let OBS=[];
+function buildObstacles(){const o=[];
+  for(const id in LAYOUT.desks){const d=LAYOUT.desks[id];o.push({x:d.dx-1,y:d.dy-2,w:32,h:18,id});} // each desk (own desk excepted in inObstacle)
+  o.push({x:150,y:210,w:36,h:16,id:'architect'});                   // manager desk — owned by the architect so they can reach the seat in front of it
+  o.push({x:38,y:78,w:96,h:12});                                    // conference table
+  o.push({x:16,y:204,w:32,h:16},{x:56,y:204,w:32,h:16},{x:32,y:226,w:46,h:14}); // lounge couches + table
+  o.push({x:174,y:60,w:32,h:13},{x:176,y:84,w:46,h:14},{x:282,y:58,w:11,h:13},{x:300,y:58,w:50,h:24}); // breakroom couch, foosball, coffee, kitchen
+  o.push({x:372,y:24,w:8,h:40},{x:410,y:24,w:8,h:40});              // toilet stalls
+  o.push({x:444,y:158,w:7,h:16},{x:140,y:158,w:12,h:16},{x:140,y:84,w:16,h:18}); // right cooler, cabinet, bookshelf (left cooler removed — it isn't drawn)
+  OBS=o;}
+function inObstacle(x,y,selfId){for(const r of OBS){if(r.id===selfId)continue;if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)return true;}return false;}
+function moveAgent(a,dt){if(!a.path||!a.path.length){a.moving=false;return;}
+  const tg=a.path[0],dx=tg.x-a.x,dy=tg.y-a.y,d=Math.hypot(dx,dy);
+  if(d<1.1){a.x=tg.x;a.y=tg.y;a.path.shift();if(!a.path.length)a.moving=false;return;}
+  const sp=a.speed*dt,nx=a.x+dx/d*Math.min(sp,d),ny=a.y+dy/d*Math.min(sp,d);
+  if(inObstacle(nx,ny,a.id)){a.path=[];a.moving=false;return;}      // don't stand on objects — stop in front/behind
+  a.x=nx;a.y=ny;a.moving=true;a.walk+=dt*0.45;if(Math.abs(dx)>0.2)a.face=dx<0?-1:1;}
+const SOCIAL=[{x:205,y:55},{x:225,y:58},{x:286,y:48},{x:235,y:127},{x:330,y:60},{x:40,y:212},{x:88,y:214}];
+const CONF_SEATS=[{x:48,y:92},{x:78,y:94},{x:108,y:94},{x:132,y:92}];
+const CHILL=[{x:178,y:70},{x:192,y:70},{x:288,y:70},{x:250,y:90},{x:332,y:72},{x:40,y:214},{x:90,y:214},{x:235,y:127}];
+const BREAKCHAT=["Coffee time","Break!","Foosball?","Slow day…","brb","Refill.","Chill mode","No tasks rn"];
+const ACTIVITIES=[{x:312,y:92,act:'☕ getting coffee'},{x:198,y:100,act:'playing foosball'},{x:235,y:60,act:'checking the board'},{x:392,y:94,act:'in the washroom'},{x:100,y:232,act:'relaxing in the lounge'},{x:30,y:202,act:'taking a break'},{x:235,y:127,act:'chatting at the cooler'}];
+function think(a,time){
+  const runWork=activeAgent===a.id||(busyUntil[a.id]||0)>time, cardWork=(busyWork[a.id]||0)>time;  // working = an actual run is active (set when a WIP/Review run starts)
+  if(runWork||cardWork){ if(a.state!=='working'){a.state='working';const d=a.home||{fx:200,fy:CORRY};routeTo(a,d.fx,d.fy);a.bubble=null;} return; }   // working/planning -> at their own workstation
+  if(standupUntil>time){ if(a.state!=='standup'){a.state='standup';if(a.id==='architect')routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);else if(a.id!=='client'){const idx=Math.abs(hashStr(a.id))%CONF_SEATS.length,s=CONF_SEATS[idx];routeTo(a,s.x,s.y);}a.bubble=pick(STANDUP);a.bubbleUntil=time+3200;} return; }   // standup gathers the team in the conference room
+  if((busyBoard[a.id]||0)>time){ if(a.state!=='board'){a.state='board';routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);a.bubble=pick(["Updating board","Moving a card","Status change"]);a.bubbleUntil=time+2200;} return; }
+  if(planning){ if(a.state!=='working'){a.state='working';const d=a.home||{fx:200,fy:CORRY};routeTo(a,d.fx,d.fy);} if(!a.moving&&Math.random()<0.005){a.bubble=a.id==='architect'?'Planning…':pick(STANDUP);a.bubbleUntil=time+2500;} return; }  // office is planning -> everyone stays still at their workstation
+  if(a.state==='working'||a.state==='board'||a.state==='standup'){a.state='idle';a.nextIdle=0;}
+  // arrived at an activity spot -> pause there a few seconds before moving on (occasional witty remark)
+  if(a.state==='goActivity'&&!a.moving){a.state='activity';a.nextIdle=time+a.actDwell;if(Math.random()<0.3){a.bubble=Math.random()<0.5?a.activity:quip(a);a.bubbleUntil=time+Math.min(a.actDwell,4000);}return;}
+  if(a.moving||time<(a.nextIdle||0))return;
+  a.state='idle';a.bubble=null;
+  const atDesk=a.home&&Math.hypot(a.x-a.home.fx,a.y-a.home.fy)<2;
+  const r=Math.random(), noTasks=!(state.tasks||[]).length;
+  if(noTasks?r<0.8:r<0.32){ // head to a room activity; the pause happens on arrival
+    const s=pick(ACTIVITIES);a.activity=s.act;a.actDwell=4500+Math.random()*5000;a.state='goActivity';a.nextIdle=time+25000;routeTo(a,s.x,s.y);}
+  else{if(a.home&&!atDesk)routeTo(a,a.home.fx,a.home.fy);if(r>0.85){a.bubble=quip(a);a.bubbleUntil=time+2600;}a.nextIdle=time+2600+Math.random()*4000;}}
+function agentStateText(id){return RKLABEL[agentBusyKind(id)];}
+
+/* ---- plan -> whiteboard post-its + assignment loop ---- */
+const COLS=[{key:"backlog",label:"BACKLOG",accent:"#8a93ad",match:["backlog","scheduled","todo","planned","queued",""]},
+  {key:"inprogress",label:"WIP",accent:"#ff9b3d",match:["in-progress","in_progress","inprogress","doing","active","wip","started"]},
+  {key:"review",label:"REVIEW",accent:"#4aa3ff",match:["review","in-review","qa","testing","verify"]},
+  {key:"done",label:"DONE",accent:"#3fbf7d",match:["done","complete","completed","shipped","closed"]}];
+const BCOLW=(WB.w-2)/4, NOTEW=BCOLW-3, NOTEH=9, NOTEGAP=2, BHEAD=10, BFOOT=9, BMAXVIS=Math.floor((WB.h-BHEAD-BFOOT-2)/(NOTEH+NOTEGAP));
+function colOf(s){s=(s||"").toLowerCase();for(const c of COLS){if(c.match.includes(s))return c.key;}return "backlog";}
+function computeSlots(){const g={backlog:[],inprogress:[],review:[],done:[]},order={P0:0,P1:1,P2:2,P3:3};
+  (state.tasks||[]).forEach(t=>g[colOf(t.status)].push(t));
+  Object.values(g).forEach(a=>a.sort((x,y)=>(order[x.priority]??9)-(order[y.priority]??9)||(x.day||0)-(y.day||0)));
+  const slots={};COLS.forEach((c,ci)=>{const colx=WB.x+ci*BCOLW+2;g[c.key].forEach((t,i)=>{slots[t.id]={col:c.key,x:colx,y:WB.y+BHEAD+i*(NOTEH+NOTEGAP),hidden:i>=BMAXVIS};});});return {slots};}
+/* ---- gamification: XP · levels · combos · streak + level-gated cosmetic rewards ---- */
+const PW={P0:4,P1:3,P2:2,P3:1};
+const COSMETICS=[
+  {id:'none',  name:'None',        lv:1},
+  {id:'cap',   name:'Ball Cap',    lv:2},
+  {id:'visor', name:'Visor',       lv:3},
+  {id:'beanie',name:'Beanie',      lv:4},
+  {id:'phones',name:'Headphones',  lv:5},
+  {id:'halo',  name:'Halo',        lv:6},
+  {id:'crown', name:'Gold Crown',  lv:7},
+  {id:'party', name:'Party Hat',   lv:8}
+];
+function xpForLevel(n){return (n-1)*(n-1)*60;}                 // lv2=60, lv3=240, lv4=540…
+function levelFromXp(xp){let n=1;while(n<8&&xpForLevel(n+1)<=(xp||0))n++;return n;}
+let gameState=null;   // rewards (XP · levels · cosmetics · score · streak) are GLOBAL — shared across every project
+function ensureGame(){if(!gameState)gameState={score:0,combo:0,comboUntil:0,streak:0,lastDoneDate:'',doneIds:[],stage:{},xp:{},equip:{},flashUntil:0,flashTxt:'',_init:false};if(!gameState.stage)gameState.stage={};if(!gameState.xp)gameState.xp={};if(!gameState.equip)gameState.equip={};if(!gameState.seenProjects)gameState.seenProjects={};return gameState;}
+function agentXp(id){const g=ensureGame();return (g&&g.xp[id])||0;}
+function agentLevel(id){return levelFromXp(agentXp(id));}
+function cosmeticUnlocked(id,cid){const c=COSMETICS.find(x=>x.id===cid);return c?agentLevel(id)>=c.lv:false;}
+function equippedCosmetic(id){const g=ensureGame();if(!g)return null;const cid=g.equip[id];return (cid&&cid!=='none'&&cosmeticUnlocked(id,cid))?cid:null;}
+function dayDiff(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+/* XP follows the PLANNING pipeline (no dev work): a task earns its owner XP as it advances.
+   0 Backlog  → Architect drafts the requirement from client feedback + product state
+   1 WIP      → the specialist owner breaks it down, adds the full technical + design detail
+   2 Review   → the whole team reviews it; estimate + timeline get added
+   3 Done      → fully specified (title, description, estimate, gantt, priority) */
+const STAGEXP={plan:8, breakdown:14, review:10};
+function stageOf(t){const k=colOf(t.status);for(let i=0;i<COLS.length;i++)if(COLS[i].key===k)return i;return 0;}
+function gx(g,id,amt){id=id||'?';g.xp[id]=(g.xp[id]||0)+amt;g.score+=amt;return amt;}
+function scanDone(){const g=ensureGame();if(!activeProj)return;if(!g.seenProjects)g.seenProjects={};const now=performance.now()-t0,first=!g.seenProjects[activeProj];g.seenProjects[activeProj]=true;let gained=0;
+  (state.tasks||[]).forEach(t=>{const o=t.owner||'?',key=activeProj+'/'+t.id;const cur=stageOf(t);const prev=(g.stage[key]===undefined)?-1:g.stage[key];
+    if(cur<=prev)return;                                  // only reward forward progress; moving back never penalises
+    if(first){g.stage[key]=cur;if(cur>=3&&g.doneIds.indexOf(key)<0)g.doneIds.push(key);return;}  // no retro XP when loading
+    const TID=(t.id||'').toUpperCase(),TT=(t.title||'').slice(0,40);
+    for(let s=prev+1;s<=cur;s++){
+      if(s===0){gained+=gx(g,'architect',STAGEXP.plan);pushHist('architect','planned '+TID+' — '+TT);}                       // Backlog — Architect plans it
+      else if(s===1){gained+=gx(g,o,STAGEXP.breakdown);pushHist(o,'breaking down '+TID+' — '+TT);}                           // WIP — specialist adds the full spec
+      else if(s===2){gained+=gx(g,o,STAGEXP.review);roster.forEach(a=>{if(a.id!==o)gained+=gx(g,a.id,2);});pushHist(o,TID+' → review (estimate + timeline)');}  // Review — whole team
+      else if(s===3){const base=10*(PW[t.priority]||2),combo=(now<g.comboUntil)?Math.min(8,g.combo+1):1;g.combo=combo;g.comboUntil=now+15000;
+        gained+=gx(g,o,base*combo);pushHist(o,'finished '+TID+' — fully specified');if(g.doneIds.indexOf(key)<0)g.doneIds.push(key);
+        const today=new Date().toISOString().slice(0,10);if(g.lastDoneDate!==today){g.streak=(g.lastDoneDate&&dayDiff(g.lastDoneDate,today)===1)?g.streak+1:1;g.lastDoneDate=today;}}
+    }
+    g.stage[key]=cur;});
+  if(!first&&gained>0){g.flashTxt='+'+gained+(g.combo>1?'  x'+g.combo:'');g.flashUntil=now+1900;}
+  if(gained>0||first)persistProjects();}
+function drawHat(cid,x,hy){const ty=hy-1;
+  if(cid==='cap'){P(x-4,ty+1,9,2,"#c0392b");P(x-4,ty,9,1,shade("#c0392b",1.25));P(x+4,ty+2,4,1,"#8a2a1f");}
+  else if(cid==='visor'){P(x-5,ty+2,4,1,"#2d6e4f");P(x-4,ty+1,9,1,"#46d6c0");}
+  else if(cid==='beanie'){P(x-4,ty,9,3,"#4aa3ff");P(x-4,ty,9,1,shade("#4aa3ff",1.3));P(x-1,ty-1,3,1,"#fff");}
+  else if(cid==='phones'){P(x-5,ty+2,1,5,"#222");P(x+5,ty+2,1,5,"#222");P(x-5,ty,11,2,"#222");}
+  else if(cid==='halo'){P(x-3,ty-2,7,1,"#ffe06a");P(x-2,ty-3,1,1,"#fff");P(x+2,ty-3,1,1,"#fff");}
+  else if(cid==='crown'){P(x-4,ty,9,1,"#ffd34d");P(x-3,ty-1,1,1,"#ffd34d");P(x,ty-2,1,2,"#ffd34d");P(x+2,ty-1,1,1,"#ffd34d");}
+  else if(cid==='party'){P(x+1,ty-3,1,4,"#ff5fae");P(x-1,ty+1,5,1,"#46d6c0");P(x,ty,1,1,"#ffd34d");}}
+function drawHud(){if(!activeProj)return;const g=ensureGame();const time=performance.now()-t0;let y=8;
+  const rows=[['SCORE '+g.score,"#ffd34d","rgba(12,15,24,.85)"]];
+  if(g.streak>0)rows.push(['STREAK '+g.streak+'d',"#dfffe9","#2d6e4f"]);
+  if(time<g.comboUntil&&g.combo>1)rows.push(['COMBO x'+g.combo,"#fff","#b9332e"]);
+  rows.forEach(it=>{const w=logicalWidth(it[0],7)+10;const x=LOGW-w-6;P(x-2,y-2,w+4,13,it[2]);P(x-2,y-2,w+4,1,"#ffffff2a");txt(it[0],x+3,y,it[1],7);y+=15;});
+  if(time<g.flashUntil){const w=logicalWidth(g.flashTxt,7)+8;txt(g.flashTxt,LOGW-w-8,y+2,"#46d6c0",7);}}
+function normalizeOwners(){ (state.tasks||[]).forEach(t=>{ if(!t.owner)return; if(roster.some(a=>a.id===t.owner))return; const o=(''+t.owner).toLowerCase(); const m=roster.find(a=>(a.name||'').toLowerCase()===o||(a.role||'').toLowerCase()===o||(NICK[a.id]||'').toLowerCase()===o||a.id.toLowerCase()===o); if(m)t.owner=m.id; }); }  // map name/role/nick → agent id so the board, profiles and XP all line up
+function applyState(s){if(!s)return;state=s;if(!state.distributor)state.distributor='architect';normalizeOwners();ensureAgents();
+  const time=performance.now()-t0;
+  const active=planning||!!activeAgent||Object.values(busyUntil).some(v=>v>time)||Object.values(busyWork).some(v=>v>time);   // captured BEFORE the flow starts runs, so cards snap to columns on startup instead of flying in
+  try{scanDone();}catch(e){}try{ensureFlow();}catch(e){}
+  const {slots}=computeSlots(),dist=LAYOUT.homes[state.distributor]||LAYOUT.homes.architect||{fx:144,fy:200};
+  (state.tasks||[]).forEach(t=>{const sl=slots[t.id];if(!sl)return;let c=cards[t.id];
+    if(!c){
+      // only animate (hand-out → work → board) during real activity AND for owners with a desk;
+      // otherwise the card is simply already pinned on the board (no flying when idle)
+      if(active&&LAYOUT.homes[t.owner]){c={task:t,x:dist.fx-NOTEW/2,y:dist.fy-13,phase:'queued',slot:sl,col:sl.col,hidden:sl.hidden,placed:false};}
+      else{c={task:t,x:sl.x,y:sl.y,phase:'placed',placed:true,slot:sl,col:sl.col,hidden:sl.hidden};}
+      cards[t.id]=c;}
+    else{c.task=t;c.slot=sl;c.col=sl.col;c.hidden=sl.hidden;if(c.phase==='placed'){c.x=sl.x;c.y=sl.y;}}});
+  Object.keys(cards).forEach(id=>{if(!slots[id])delete cards[id];});renderTab();}
+function deskSpot(o){const h=LAYOUT.homes[o]||{fx:200,fy:CORRY};return {x:h.fx-NOTEW/2,y:h.fy-13};}
+function moveToward(c,dt){const dx=c.tx-c.x,dy=c.ty-c.y,d=Math.hypot(dx,dy),k=Math.min(1,0.16*dt);if(d>0.6){c.x+=dx*k;c.y+=dy*k;return false;}c.x=c.tx;c.y=c.ty;return true;}
+function updateCards(time,dt){const byOwner={};for(const id in cards){const c=cards[id];(byOwner[c.task.owner||'?']=byOwner[c.task.owner||'?']||[]).push(c);}
+  for(const o in byOwner){const list=byOwner[o];if(!list.some(c=>c.phase==='toDesk'||c.phase==='working')){const nx=list.find(c=>c.phase==='queued');if(nx){nx.phase='toDesk';const s=deskSpot(o);nx.tx=s.x;nx.ty=s.y;}}}
+  for(const id in cards){const c=cards[id],o=c.task.owner;
+    if(c.phase==='toDesk'){busyWork[o]=time+700;if(moveToward(c,dt)){c.phase='working';c.workUntil=time+1500+Math.random()*900;}}
+    else if(c.phase==='working'){busyWork[o]=Math.max(busyWork[o]||0,time+300);if(time>=c.workUntil){c.phase='toBoard';c.tx=c.slot.x;c.ty=c.slot.y;}}
+    else if(c.phase==='toBoard'){if(moveToward(c,dt)){c.phase='placed';c.placed=true;c.x=c.slot.x;c.y=c.slot.y;}}}}
+
+/* ---- furniture ---- */
+function shade(hex,f){if(typeof hex!=='string'||hex[0]!=='#'||hex.length<7)return hex||'#888';const n=parseInt(hex.slice(1,7),16);if(isNaN(n))return hex;const r=Math.min(255,Math.max(0,((n>>16)&255)*f|0)),g=Math.min(255,Math.max(0,((n>>8)&255)*f|0)),b=Math.min(255,Math.max(0,(n&255)*f|0));return 'rgb('+r+','+g+','+b+')';}
+function shadowEll(x,y,w){P(x,y,w,2,"rgba(0,0,0,.26)");}
+function door(r){const d=r.door,fl=r.floor;
+  if(Math.abs(d.y-r.y)<8){P(d.x-8,r.y,16,WALLH+2,fl);P(d.x-9,r.y,1,WALLH+2,shade(r.wall,1.1));P(d.x+8,r.y,1,WALLH+2,shade(r.wall,0.8));}
+  else if(Math.abs(d.y-(r.y+r.h))<8){P(d.x-8,r.y+r.h-4,16,6,fl);P(d.x-9,r.y+r.h-4,1,6,shade(r.wall,1.1));P(d.x+8,r.y+r.h-4,1,6,shade(r.wall,0.8));}
+  else if(Math.abs(d.x-r.x)<8){P(r.x,d.y-8,4,16,fl);}
+  else if(Math.abs(d.x-(r.x+r.w))<8){P(r.x+r.w-4,d.y-8,4,16,fl);}}
+function drawRoom(r){P(r.x,r.y,r.w,r.h,r.floor);
+  for(let gx=r.x+6;gx<r.x+r.w-4;gx+=11)P(gx,r.y+WALLH+3,1,r.h-WALLH-7,shade(r.floor,0.94)); // faint carpet rows (below the wall)
+  P(r.x+3,r.y+r.h-5,r.w-6,1,shade(r.floor,0.68));                                 // baseboard shadow
+  // tall camera-facing back wall (3/4): face + lit top edge + vertical panelling + floor AO
+  P(r.x,r.y,r.w,WALLH,r.wall);P(r.x,r.y,r.w,2,shade(r.wall,1.35));P(r.x,r.y+WALLH-2,r.w,2,shade(r.wall,0.78));
+  for(let gx=r.x+10;gx<r.x+r.w-6;gx+=18)P(gx,r.y+3,1,WALLH-5,shade(r.wall,0.9)); // panel seams
+  P(r.x,r.y+WALLH,r.w,2,"rgba(0,0,0,.30)");                                       // AO where wall meets floor
+  P(r.x,r.y,3,r.h,shade(r.wall,1.12));P(r.x+r.w-3,r.y,3,r.h,shade(r.wall,0.8));P(r.x,r.y+r.h-3,r.w,3,shade(r.wall,0.72));
+  door(r);}
+function drawRoomLabels(){for(const k in ROOMS){const r=ROOMS[k];const w=logicalWidth(r.label,6)+6;const lx=(k==='bullpen')?(r.x+r.w-w-4):(r.x+4);P(lx,r.y+1,w,7,shade(r.wall,0.7));txt(r.label,lx+2,r.y+1,"#f3efe2",6);}}  // bullpen label on the right so it doesn't sit over the gantt board
+function plant(x,y){shadowEll(x-1,y+11,9);
+  P(x,y+6,6,6,shade("#7a4a2a",1.05));P(x,y+6,6,1,"#9a6a3a");P(x,y+11,6,1,"#3a2414");P(x+1,y+7,1,4,shade("#7a4a2a",1.3)); // terracotta pot + rim + sheen
+  P(x,y,7,3,"#2f6b40");P(x-1,y+2,9,3,"#3f7a4a");P(x+1,y+4,6,2,"#46915a");                                               // layered foliage
+  P(x+1,y-2,2,3,"#5fb070");P(x+4,y-1,2,2,"#5fb070");P(x-1,y+1,2,2,"#356b40");P(x+6,y+1,2,2,"#356b40");P(x+2,y-1,1,1,"#74c585");}
+function couch(x,y,col){col=col||"#3a4a6a";shadowEll(x,y+11,28);
+  P(x,y-5,28,6,shade(col,1.22));P(x,y-5,28,1,shade(col,1.5));                       // backrest + top light
+  P(x,y,28,9,col);P(x,y,28,1,shade(col,1.12));P(x,y+9,28,2,shade(col,0.5));         // seat + base
+  P(x+8,y,1,8,shade(col,0.7));P(x+18,y,1,8,shade(col,0.7));                          // cushion seams (3 cushions)
+  P(x-1,y-4,5,13,shade(col,1.18));P(x+24,y-4,5,13,shade(col,0.78));                 // arms
+  P(x+2,y+1,6,4,shade(col,1.35));P(x+2,y+1,6,1,shade(col,1.55));                     // throw pillow
+  P(x+1,y+10,2,2,"#2a1c12");P(x+25,y+10,2,2,"#2a1c12");}                             // wooden legs
+function coffee(x,y){shadowEll(x,y+11,9);P(x,y,9,3,shade("#34343c",1.2));P(x,y+3,9,8,"#2a2a30");P(x,y+3,1,8,shade("#2a2a30",1.5));
+  P(x+2,y+5,5,3,"#0c0c10");P(x+3,y+5,1,1,"#6fb6d6");P(x+2,y+8,5,2,"#6a3f22");P(x+3,y+9,3,1,"#8a5a32");
+  P(x+7,y+1,1,1,"rgba(255,255,255,.45)");P(x+6,y,1,1,"rgba(255,255,255,.28)");}
+function table(x,y,w){shadowEll(x,y+11,w);P(x,y,w,4,shade("#6a4f38",1.18));P(x,y,w,1,shade("#6a4f38",1.5));P(x,y+4,w,6,"#5a4330");
+  for(let i=4;i<w-2;i+=6)P(x+i,y+1,1,3,shade("#5a4330",0.85));
+  P(x,y+10,w,1,"#1c120a");P(x+1,y+11,2,3,shade("#5a4330",0.5));P(x+w-3,y+11,2,3,shade("#5a4330",0.5));
+  P(x+4,y-1,3,3,"#b9332e");P(x+4,y-1,3,1,"#d9534f");P(x+(w>>1)-2,y,4,3,"#eef0ea");P(x+w-9,y-2,3,3,"#2f6f4f");P(x+w-8,y-3,1,2,"#3f9b6a");}
+function toiletIcon(x,y){shadowEll(x,y+9,6);P(x,y-2,6,3,"#cdd9de");P(x,y-2,6,1,"#eef6f8");P(x,y+1,6,3,"#eef6f8");P(x,y+4,6,3,"#dfeef2");P(x+1,y+2,4,2,"#bcd2d8");P(x+1,y+7,4,2,"#9ab0b6");}
+function sink(x,y){P(x,y,8,3,"#e7f1f4");P(x,y,8,1,"#fff");P(x,y+3,8,2,"#cfe0e4");P(x+2,y+1,4,1,"#b8ccd2");P(x+3,y-2,2,3,"#9aa6ab");P(x+3,y-2,1,1,"#cfd8dc");}
+function bigdesk(x,y){shadowEll(x,y+13,34);
+  P(x,y,34,4,shade("#5a4330",1.25));P(x,y,34,1,shade("#5a4330",1.5));P(x,y+4,34,8,"#5a4330");P(x,y+12,34,1,"#1c120a"); // top + front
+  P(x+10,y+9,14,2,shade("#5a4330",0.78));P(x+16,y+9,2,1,shade("#5a4330",1.3));                                          // drawer + handle
+  P(x+1,y+12,3,3,shade("#5a4330",0.5));P(x+30,y+12,3,3,shade("#5a4330",0.5));                                           // legs
+  P(x+22,y-8,11,10,"#0a0a10");P(x+22,y-8,11,1,"#3a4150");P(x+23,y-7,9,8,"#6fb6d6");P(x+24,y-6,7,1,"#bfe3f4");P(x+24,y-4,5,1,"#bfe3f4");P(x+26,y-2,3,3,"#23262e"); // monitor + stand
+  P(x+4,y+5,9,3,"#2a2018");P(x+5,y+6,7,1,"#e8b53a");                                                                    // nameplate
+  P(x+15,y+3,6,5,"#eef0ea");P(x+15,y+3,6,1,"#fff");P(x+15,y+6,6,1,"#c8ccc2");                                           // papers
+  P(x+1,y+1,3,4,"#3a4150");P(x+1,y,3,1,"#6a7280");                                                                      // pen cup
+  P(x-3,y-6,5,5,"#ffd34d");P(x-3,y-6,5,1,"#ffe27a");P(x+1,y-4,1,2,"#e0a020");}                                          // "World's Best" mug
+function drawWorkstation(dx,dy,id,busy,time){const s=genDeskStyle(id);
+  if(busy)P(dx-2,dy-8,34,26,"rgba(255,211,77,.10)");
+  // office chair: backrest + seat + post + 5-star base
+  P(dx+11,dy+9,8,5,shade("#2a3048",1.15));P(dx+11,dy+9,8,1,"#3a4264");P(dx+12,dy+14,6,2,"#23283a");P(dx+14,dy+16,2,2,"#1a1f30");P(dx+12,dy+18,6,1,"#1a1f30");P(dx+11,dy+18,1,1,"#1a1f30");P(dx+18,dy+18,1,1,"#1a1f30");
+  // 3/4 desk: top + front face + base shadow + drawer + legs
+  shadowEll(dx,dy+16,30);
+  P(dx,dy+7,30,4,shade(s.wood,1.2));P(dx,dy+7,30,1,shade(s.wood,1.45));
+  P(dx,dy+11,30,4,s.wood);P(dx,dy+15,30,1,shade(s.wood,0.5));
+  P(dx+18,dy+12,9,2,shade(s.wood,0.78));P(dx+22,dy+12,2,1,shade(s.wood,1.3)); // drawer + handle
+  P(dx+1,dy+15,2,3,shade(s.wood,0.5));P(dx+27,dy+15,2,3,shade(s.wood,0.5));
+  // monitor: stand, base, bezel, screen, webcam
+  P(dx+13,dy+4,2,4,"#23262e");P(dx+11,dy+7,6,1,"#2a2e36");
+  P(dx+8,dy-6,12,11,"#0a0a10");P(dx+8,dy-6,12,1,"#3a4150");P(dx+8,dy-6,1,11,"#2a3040");P(dx+13,dy-7,1,1,"#6a7280");
+  if(busy){P(dx+9,dy-5,10,9,s.screen);P(dx+9,dy-5,10,1,"#ffffff66");
+    P(dx+10,dy-4,3,1,"#10202a");P(dx+14,dy-4,4,1,"#10202a");P(dx+10,dy-2,5,1,"#10202a");P(dx+10,dy,3,1,"#10202a");P(dx+14,dy,3,1,"#10202a");P(dx+10,dy+2,4,1,"#10202a");
+    P(dx+10+((Math.floor(time/250))%8),dy+3,1,1,"#ffffffcc");P(dx+18,dy+4,1,1,"#7ee787");}
+  else{P(dx+9,dy-5,10,9,"#161b22");P(dx+18,dy+4,1,1,"#5a2a2a");}
+  P(dx+19,dy-3,2,2,"#ffd34d");                                                // sticky note on bezel
+  // keyboard (mousepad + keys) + mouse
+  P(dx+5,dy+8,14,1,"#2a2e36");P(dx+5,dy+9,14,2,"#cfd2da");for(let k=0;k<6;k++)P(dx+6+k*2,dy+9,1,1,"#9aa0aa");
+  P(dx+21,dy+9,3,2,"#1c1f26");P(dx+22,dy+9,1,1,"#cfd2da");
+  // always-present desk props
+  P(dx+1,dy+5,3,4,"#b9332e");P(dx+1,dy+5,3,1,"#d9534f");P(dx+4,dy+6,1,2,"#b9332e");        // mug
+  P(dx+25,dy+5,4,4,"#eef0ea");P(dx+25,dy+5,4,1,"#fff");P(dx+25,dy+8,4,1,"#c8ccc2");         // papers
+  if(s.acc===2){P(dx+5,dy+2,1,5,"#caa05a");P(dx+4,dy+1,3,2,"#ffd34d");}                     // desk lamp
+  else if(s.acc===3){P(dx+5,dy+3,3,4,"#2f6f4f");P(dx+6,dy+1,2,3,"#3f9b6a");}                // small plant
+  else {P(dx+6,dy+5,2,3,"#3a4150");P(dx+6,dy+4,2,1,"#6a7280");}}                            // pen cup
+function rug(x,y,w,h,col){P(x,y,w,h,col);P(x,y,w,1,shade(col,1.25));P(x,y+h-1,w,1,shade(col,0.7));P(x+2,y+2,w-4,h-4,shade(col,1.08));P(x+4,y+4,w-8,h-8,col);}
+function cooler(x,y){shadowEll(x,y+14,7);
+  P(x+1,y-6,5,5,"#6fd0e6");P(x+1,y-6,5,1,"#bfeaf4");P(x+2,y-7,3,1,"#7fc7da");   // blue water bottle on top
+  P(x,y-1,7,15,"#e7eef2");P(x,y-1,7,1,"#fff");P(x,y-1,1,15,"#cfd8dc");          // white tower body
+  P(x+2,y+5,3,2,"#2a3038");P(x+3,y+7,1,1,"#6fb6d6");                             // spigot + drip
+  P(x+1,y+11,5,2,"#9aa6ab");}                                                    // base
+function cabinet(x,y){shadowEll(x,y+16,12);P(x,y,12,16,shade("#7a8a98",1.06));P(x,y,12,1,"#aebac4");for(let i=0;i<3;i++){P(x+1,y+1+i*5,10,4,"#6a7a88");P(x+5,y+3+i*5,2,1,"#cfd8dc");}}
+function bookshelf(x,y){shadowEll(x,y+18,16);P(x,y,16,18,shade("#5a4330",1.06));P(x,y,16,1,"#7a5d40");const bc=["#b9332e","#3f8f6a","#4aa3ff","#e8b53a","#9a6ad0","#cdbf9e"];for(let r=0;r<3;r++){P(x+1,y+1+r*6,14,5,"#2a1f14");for(let b=0;b<6;b++)P(x+2+b*2,y+2+r*6,1,3,bc[(r+b)%6]);}}
+function drawDecor(){
+  rug(36,72,80,20,"#33446a");                 // conference rug under table
+  rug(20,202,98,42,"#37294e");                 // lounge rug — centered under the seating
+  rug(226,166,222,74,"#2a3650");               // bullpen rug — within floor edges, below the back/entrance wall
+  bookshelf(140,84);                           // conference bookshelf (right of the table)
+  cabinet(140,158);                            // office filing cabinet
+  cooler(444,160);                             // bullpen water cooler (top-right)
+  for(let gx=363;gx<451;gx+=8)for(let gy=25;gy<98;gy+=8)P(gx,gy,7,7,(((gx/8|0)+(gy/8|0))%2)?"#525f69":"#48545e"); // WC floor tiles (below the back wall)
+  [[44,11],[230,11],[300,11],[60,150],[300,150],[120,150]].forEach(p=>P(p[0],p[1],24,2,"rgba(255,250,220,.07)")); // ceiling lights
+  door(ROOMS.toilet);                                                         // re-open the WC doorway (tiles covered it)
+}
+function drawGanttBoard(){ // live mini-gantt board in the open-office left corner (click to open the full chart)
+  const b=GBD;
+  board3d(b.x,b.y,b.w,b.h,"#7a5d3a");
+  P(b.x,b.y,b.w,b.h,"#eef2f6");P(b.x,b.y+b.h-1,b.w,1,"#c4ccd2");                   // board surface
+  P(b.x,b.y,b.w,7,"#2d6e4f");P(b.x,b.y,b.w,1,shade("#2d6e4f",1.3));const fg=fitBox("GANTT",b.w-4,6,4);txt(fg.t,b.x+(b.w-fg.w)/2,b.y,"#dfffe9",fg.sz);
+  const tasks=(state.tasks||[]),cap=state.capacityHoursPerDay||6;
+  const sdOf=t=>Math.max(1,Math.round(t.startDay||t.day||1));
+  const durOf=t=>Math.max(1,Math.round(t.durationDays||Math.ceil((t.estimateHours||cap)/cap)));
+  let maxD=6;tasks.forEach(t=>maxD=Math.max(maxD,sdOf(t)+durOf(t)-1));
+  const gx=b.x+2,gy=b.y+8,gw=b.w-4,gh=b.h-9,cw=gw/maxD;
+  for(let d=0;d<=maxD;d++)P(gx+d*cw,gy,0.5,gh,"#d4dce2");                          // day gridlines
+  if(!tasks.length){txt("no tasks",gx+2,gy+gh/2-3,"#9aa6ad",6);return;}
+  const shown=tasks.slice(0,4),rh=gh/shown.length;
+  shown.forEach((t,i)=>{const sd=sdOf(t),dur=durOf(t),col=PCOL[t.priority]||"#888";
+    const bx=gx+(sd-1)*cw,bw=Math.max(2,dur*cw-0.5),by=gy+i*rh+0.5,bh=Math.max(2,rh-1.2);
+    P(bx,by,bw,bh,col);P(bx,by,bw,1,shade(col,1.3));});
+}
+function drawKitchen(x,y){ // ~50 wide kitchenette: fridge + counter w/ sink + cabinets + microwave
+  shadowEll(x,y+16,50);
+  P(x,y-8,12,24,shade("#cfd8dc",1.05));P(x,y-8,12,1,"#eef");P(x,y+4,12,1,shade("#cfd8dc",0.7));P(x+9,y-5,1,6,"#8aa0a6");P(x+9,y+6,1,7,"#8aa0a6"); // fridge
+  P(x+15,y-10,34,7,shade("#7a5d40",1.12));P(x+15,y-10,34,1,shade("#7a5d40",1.4));P(x+18,y-9,13,5,"#6a4f38");P(x+33,y-9,13,5,"#6a4f38"); // upper cabinets
+  P(x+15,y,35,3,"#c9cdd4");P(x+15,y,35,1,"#eef");P(x+15,y+3,35,11,shade("#7a5d40",0.95)); // counter top + base
+  P(x+18,y+5,12,7,shade("#7a5d40",0.85));P(x+33,y+5,12,7,shade("#7a5d40",0.85));P(x+24,y+8,2,1,"#caa05a");P(x+39,y+8,2,1,"#caa05a"); // doors + handles
+  P(x+20,y,9,3,"#9aa6ab");P(x+22,y+1,5,1,"#6a767c");P(x+24,y-2,1,3,"#cfd8dc"); // sink + faucet
+  P(x+36,y-6,12,6,"#2a2a30");P(x+37,y-5,8,4,"#6fb6d6");P(x+45,y-5,1,4,"#888");} // microwave
+function drawBreakroom(){
+  projHit=[];
+  // notice board with the projects pinned as post-it notes (filtering is on the kanban board) — smaller, 3/4 mounted
+  const nbx=170,nby=18,nbw=178,nbh=20;
+  board3d(nbx,nby,nbw,nbh,"#5a3a22");
+  P(nbx,nby,nbw,nbh,"#9a6a40");P(nbx,nby,nbw,2,"#b58a54");txt("PROJECTS",nbx+3,nby+1,"#3a2414",6);
+  let px=nbx+5,py=nby+9;const pl=projects.length?projects:[{name:"(none yet)",color:"#8a93ad"}];
+  pl.forEach(p=>{const f=fitBox(p.name,44,6,4),w=Math.max(16,f.w+6);
+    P(px+1,py+1,w,9,"#0004");P(px,py,w,9,"#fff4cf");P(px,py,w,1,"#fffae6");P(px,py,2,9,p.color);P(px+(w>>1),py-1,2,2,p.color);
+    txt(f.t,px+3,py+3,"#3a2f20",f.sz);px+=w+4;if(px>nbx+nbw-16){px=nbx+5;py+=10;}});
+  // coffee + games (lower half) — foosball moved off the entrance (door is at x255)
+  drawKitchen(300,68);
+  coffee(284,60);couch(176,64,"#5a3a4a");
+  P(176,84,46,10,"#2f6f4f");P(176,84,46,2,"#3f8f6f");P(191,82,1,14,"#0a0d0a");P(205,82,1,14,"#0a0d0a");P(196,88,7,3,"#cdbf9e");}
+function drawLounge(){couch(35,210,"#4a3a6a");couch(73,210,"#4a3a6a");table(50,228,40);P(66,226,8,3,"#1a1a24");
+  P(16,152,34,4,"#08080c");P(18,153,30,2,"#2a6a8a");}   // wall TV — left of the doorway (door is at x65)
+function board3d(x,y,w,h,frame){const fx=x-3,fy=y-3,fw=w+6,fh=h+6; // 3/4 wall-mounted frame: lit top+left faces, shadowed right+bottom
+  P(fx+2,fy+fh,fw,2,"rgba(0,0,0,.30)");                 // cast shadow on the wall below
+  P(fx,fy,fw,fh,frame);
+  P(fx,fy,fw,2,shade(frame,1.4));                       // top face (catches light)
+  P(fx,fy,2,fh,shade(frame,1.18));                      // left face
+  P(fx+fw-2,fy,2,fh,shade(frame,0.62));                 // right face (in shadow)
+  P(fx,fy+fh-2,fw,2,shade(frame,0.7));}                 // bottom edge
+function drawWhiteboard(){board3d(WB.x,WB.y,WB.w,WB.h,"#c9a24a");P(WB.x,WB.y,WB.w,WB.h,"#f8f6ee");
+  // clean title bar only
+  P(WB.x,WB.y,WB.w,9,"#2d3f63");const fk=fitBox("KANBAN",WB.w-6,6,4);txt(fk.t,WB.x+(WB.w-fk.w)/2,WB.y+2,"#ffd34d",fk.sz);
+  // faint column dividers (no per-column labels)
+  COLS.forEach((c,ci)=>{if(ci>0)P(WB.x+ci*BCOLW,WB.y+10,1,WB.h-12,"#e6dcc2");});
+  const ov={backlog:0,inprogress:0,review:0,done:0};
+  Object.values(cards).forEach(c=>{if(c.phase!=='placed')return;if(c.hidden){ov[c.col]++;return;}drawNote(c.x,c.y,c.task,false);});
+  // dedicated footer row for the "+N more" counters so they never overlap the cards
+  P(WB.x+1,WB.y+WB.h-9,WB.w-2,1,"#e6dcc2");
+  COLS.forEach((c,ci)=>{if(ov[c.key]>0)txt("+"+ov[c.key]+"",WB.x+ci*BCOLW+3,WB.y+WB.h-7,"#6b5d4a",6);});}
+function drawNote(x,y,task,carried){P(x-1,y+1,NOTEW+1,NOTEH,"rgba(0,0,0,.3)");P(x,y,NOTEW,NOTEH,"#fff4cf");P(x,y,2,NOTEH,PCOL[task.priority]||"#888");P(x+NOTEW-3,y+1,2,2,COLORS[task.owner]||"#999");txt((task.id||"").toUpperCase(),x+4,y+2,"#3a2f20",6);
+  if(carried){const g="#ffd34d";P(x,y,NOTEW,1,g);P(x,y+NOTEH-1,NOTEW,1,g);P(x,y,1,NOTEH,g);P(x+NOTEW-1,y,1,NOTEH,g);}}
+
+/* ---- people ---- */
+function drawHair(x,y,style,hair){const hl=shade(hair,1.3);
+  if(style===2){P(x-3,y+1,7,1,hair);P(x-4,y+2,1,2,hair);P(x+3,y+2,1,2,hair);return;}              // balding
+  P(x-3,y,7,1,hair);P(x-4,y+1,9,2,hair);P(x-3,y,4,1,hl);                                            // crown + sheen
+  if(style===1){P(x-5,y+2,1,9,hair);P(x+4,y+2,1,9,hair);}                                            // long
+  else{P(x-5,y+2,1,4,hair);P(x+4,y+2,1,4,hair);}
+  if(style===3){P(x-3,y-2,1,2,hair);P(x-1,y-3,1,3,hair);P(x+1,y-2,1,2,hair);P(x+3,y-2,1,2,hair);}    // spiky
+  if(style===4){P(x-1,y-2,3,2,hair);}}                                                                // bun
+function drawTag(label,cx,topY,bg){const f=fitBox(label,76,6,5),w=f.w+4;let x=cx-w/2;x=Math.max(1,Math.min(LOGW-w-1,x));P(x,topY,w,8,bg);txt(f.t,x+2,topY+1,"#fff",f.sz);}
+function drawBubble(text,cx,topY){const f=fitBox(text,110,6,4),w=f.w+6,bh=Math.max(9,f.sz+3);let x=cx-3;x=Math.max(1,Math.min(LOGW-w-1,x));let by=topY-bh;if(by<1)by=topY+12;P(x,by,w,bh,"#fff");P(x,by,w,1,"#caa05a");P(cx-1,by+bh,3,2,"#fff");txt(f.t,x+3,by+1,"#2a2118",f.sz);}
+function drawPerson(a,time){if(!a||!isFinite(a.x)||!isFinite(a.y))return;const id=a.id,app=(a.app&&a.app.shirt)?a.app:genApp({id:id,name:a.name}),shirt=app.shirt,hair=app.hair,skin=app.skin,
+  dark="#1a120c",white="#f3efe2",pants="#33384a",shoe="#20180f";
+  const x=a.x,base=a.y,hy=base-30,working=a.state==='working'&&!a.moving;
+  P(x-5,base-1,12,2,"rgba(0,0,0,.30)");                                  // grounded shadow
+  const sw=Math.sin(a.walk||0);
+  // legs + shoes
+  if(a.moving){const off=Math.round(sw*2);P(x-4+off,hy+20,3,8,pants);P(x+1-off,hy+20,3,8,pants);P(x-5+off,hy+27,4,3,shoe);P(x-off,hy+27,4,3,shoe);}
+  else{P(x-4,hy+20,3,8,pants);P(x+1,hy+20,3,8,pants);P(x+1,hy+20,2,8,shade(pants,0.82));P(x-5,hy+27,4,3,shoe);P(x+1,hy+27,4,3,shoe);}
+  // torso + collar + shading + tie
+  P(x-5,hy+12,11,9,shirt);P(x-5,hy+12,11,1,white);P(x-1,hy+12,2,2,white);
+  P(x+4,hy+12,2,9,shade(shirt,0.75));P(x-5,hy+12,1,9,shade(shirt,1.2));
+  if(app.tie)P(x,hy+13,1,6,"#b9332e");
+  // arms + hands
+  let lA=0,rA=0;if(working){rA=(Math.floor(time/150)%2)?2:0;}else if(a.moving){lA=sw>0?1:0;rA=sw<0?1:0;}
+  P(x-6,hy+13,2,7-lA,shirt);P(x-6,hy+19-lA,2,2,skin);P(x+5,hy+13,2,7-rA,shirt);P(x+5,hy+19-rA,2,2,skin);
+  P(x-1,hy+10,3,2,shade(skin,0.9));                                      // neck
+  // head (built like the portrait so they match)
+  if(working){ // turned to face the monitor — show the back of the head
+    drawHair(x,hy,app.style,hair);
+    P(x-4,hy+2,9,8,hair);P(x-4,hy+2,9,1,shade(hair,1.25));P(x-4,hy+9,9,1,shade(hair,0.7)); // back of head (hair)
+    P(x-5,hy+4,1,2,skin);P(x+4,hy+4,1,2,skin);                                              // ear tips
+  } else {
+    drawHair(x,hy,app.style,hair);
+    P(x-4,hy+2,9,8,skin);P(x-5,hy+3,1,3,skin);P(x+4,hy+3,1,3,skin);        // face + ears
+    P(x+3,hy+2,2,8,shade(skin,0.86));                                      // face shade
+    if(app.beard){P(x-4,hy+7,9,2,hair);P(x-3,hy+9,7,1,hair);}
+    const blink=!a.moving&&(Math.floor(time/1800)%9===0);
+    if(!blink){P(x-2,hy+5,1,2,dark);P(x+2,hy+5,1,2,dark);P(x-3,hy+4,2,1,shade(hair,0.85));P(x+2,hy+4,2,1,shade(hair,0.85));}
+    if(app.glasses){P(x-3,hy+5,3,1,dark);P(x+1,hy+5,3,1,dark);P(x,hy+5,1,1,dark);}
+    P(x,hy+6,1,2,shade(skin,0.78));P(x-2,hy+8,4,1,"#9a5a4a");              // nose + mouth
+  }
+  const _cos=equippedCosmetic(id);
+  if(id==="client"){P(x+5,hy+4,1,4,"#222");P(x+4,hy+4,1,1,"#222");}
+  if(_cos)drawHat(_cos,x,hy);
+  const _kind=agentBusyKind(id);   // same source as the roster status, so the tag never disagrees with it
+  if(_kind!=='idle'){let lbl,tc='#b9332e';const sc=stageCaps[id];
+    if(_kind==='plan'){lbl='PLANNING';tc='#46d6c0';}
+    else if(roundtable&&roundtable.pending[id]){lbl='💬 Roundtable';tc='#8a5cc0';}
+    else if(sc){const tk=(state.tasks||[]).find(x=>x.id===sc.taskId)||{};if(sc.kind==='review'){lbl='⊙ Review: '+(tk.title||sc.taskId||'');tc='#4aa3ff';}else{lbl='▸ '+(tk.title||sc.taskId||'task');}}
+    else{const wt=wipTaskOf(id);lbl=wt?('▸ '+(wt.title||'task')):(busyLabel[id]||"WORK");}
+    drawTag(lbl,x,hy-9,tc);}
+  if(a.bubble&&a.bubbleUntil>time)drawBubble(a.bubble,x,hy-3);}
+
+/* ---- scene ---- */
+function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first so a throttled/hidden frame still keeps the loop alive
+  if(document.hidden)return;                                 // window minimised/blurred → skip work entirely
+  if(now-lastT<32)return;                                    // ~30fps cap (was uncapped ~60fps) — roughly halves canvas CPU
+  const dt=Math.min(3,(now-lastT)/16.7);lastT=now;const time=now-t0;try{
+  ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=false;
+  P(0,0,LOGW,LOGH,"#1b2236");
+  for(let x=6;x<454;x+=8)for(let y=106;y<148;y+=8)P(x,y,8,8,((x/8+(y/8|0))%2===0)?"#3a4768":"#34405e");
+  for(const k in ROOMS)drawRoom(ROOMS[k]);
+  P(ENV.x,ENV.y,ENV.w,3,"#05060a");P(ENV.x,ENV.y+ENV.h-3,ENV.w,3,"#05060a");P(ENV.x,ENV.y,3,ENV.h,"#05060a");P(ENV.x+ENV.w-3,ENV.y,3,ENV.h,"#05060a");
+  P(34,ENV.y+ENV.h-3,20,3,ROOMS.lounge.floor);
+  drawDecor();
+  // static background fixtures (against walls)
+  table(40,80,92);drawBreakroom();   // boards are depth-sorted with people below (see items)
+  P(372,20,1,42,"#5a6a72");P(410,20,1,42,"#5a6a72");toiletIcon(378,28);toiletIcon(416,28);sink(378,72);sink(416,72);P(434,22,14,7,"#cdd9de");P(434,22,14,1,"#eef6f8");
+  drawLounge();
+  // standup scheduler — when there are tasks, the Manager gathers the team; the meeting begins once everyone has arrived
+  if((state.tasks||[]).length>0&&!planning&&time>nextStandup&&standupUntil<time){nextStandup=time+3600000;doStandup();}   // hourly standup
+  if(standupPhase==='gather'&&standupUntil>time&&teamArrived()){standupPhase='meeting';try{runStandupContent();}catch(e){}}
+  if(standupUntil<time)standupPhase=null;
+  // advance agents
+  ensureAgents();buildObstacles();
+  roster.forEach(a=>{const e=A[a.id];if(e){think(e,time);moveAgent(e,dt);}});
+  // separation — agents shouldn't stand inside each other
+  const ents=roster.map(a=>A[a.id]).filter(Boolean);
+  for(let i=0;i<ents.length;i++)for(let j=i+1;j<ents.length;j++){const p=ents[i],q=ents[j];let dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);if(d<0.001){dx=1;dy=0;d=1;}if(d<9){const push=(9-d)/2;let ux=dx/d,uy=dy/d;
+    if(p.moving||q.moving)continue;   // only un-stack STATIONARY agents — walkers pass through freely (no shoving / doorway jams)
+    const px=p.x-ux*push,py=p.y-uy*push;if(!inObstacle(px,py,p.id)){p.x=px;p.y=py;}const qx=q.x+ux*push,qy=q.y+uy*push;if(!inObstacle(qx,qy,q.id)){q.x=qx;q.y=qy;}}}
+  // occasional chit-chat between two idle neighbours
+  if(time>nextChat){for(let i=0;i<ents.length;i++){const p=ents[i];if(p.moving||agentBusyKind(p.id)!=='idle')continue;const q=ents.find((x,j)=>j!==i&&!x.moving&&Math.hypot(x.x-p.x,x.y-p.y)<22&&agentBusyKind(x.id)==='idle');if(q){p.face=q.x<p.x?-1:1;q.face=p.x<q.x?-1:1;p.bubble=pick(CHATTER);p.bubbleUntil=time+2600;nextChat=time+7000+Math.random()*9000;break;}}}
+  // depth-sorted movable items (desks, plants, manager desk, people) — correct front/behind
+  const items=[];
+  roster.filter(a=>a.id!=='architect'&&a.id!=='client').forEach(a=>{const d=LAYOUT.desks[a.id];if(!d)return;const busy=activeAgent===a.id||(busyUntil[a.id]||0)>time||(busyWork[a.id]||0)>time;items.push({y:d.dy,draw:()=>drawWorkstation(d.dx,d.dy,a.id,busy,time)});});  // sort by desk top so the person (in front) draws over it
+  items.push({y:226,draw:()=>bigdesk(152,212)});
+  [{x:118,y:240},{x:206,y:240},{x:12,y:120},{x:450,y:120}].forEach(p=>items.push({y:p.y+10,draw:()=>plant(p.x,p.y)}));
+  roster.forEach(a=>{const e=A[a.id];if(e)items.push({y:e.y,draw:()=>drawPerson(e,time)});});
+  // boards as depth items (bottom edge) — a person standing in front (higher y) draws over them, incl. their bubble
+  items.push({y:WB.y+WB.h,draw:drawWhiteboard});
+  items.push({y:GBD.y,draw:drawGanttBoard});   // sort by its top so it stays on the wall, behind the desks/people in front
+  items.sort((p,q)=>p.y-q.y);items.forEach(it=>{try{it.draw();}catch(e){}});
+  // room labels on top so furniture never hides them
+  drawRoomLabels();
+  // task cards in flight
+  updateCards(time,dt);
+  Object.values(cards).forEach(c=>{if(c.phase==='toDesk'||c.phase==='working'||c.phase==='toBoard'){P(c.x+NOTEW/2-1,c.y+NOTEH+1,3,2,"rgba(0,0,0,.3)");drawNote(c.x,c.y,c.task,c.phase!=='working');}});
+  if(standupUntil>time){const t='● STANDUP';const w=logicalWidth(t,6)+8;P(LOGW/2-w/2,LOGH-12,w,10,"#46d6c0");txt(t,LOGW/2-w/2+4,LOGH-10,"#06120f",6);}
+  else if(planning){const t='● NOW PLANNING…';const w=logicalWidth(t,6)+8;P(LOGW/2-w/2,LOGH-12,w,10,"#2d3f63");txt(t,LOGW/2-w/2+4,LOGH-10,"#ffd34d",6);}
+  }catch(e){}}
+
+/* ---- hit test / cursor ---- */
+function hitTest(lx,ly){
+  for(const ph of projHit){if(lx>=ph.x&&lx<=ph.x+ph.w&&ly>=ph.y&&ly<=ph.y+ph.h)return {type:'project',id:ph.id};}
+  for(const id in cards){const c=cards[id];if(c.phase==='placed'&&!c.hidden&&lx>=c.x&&lx<=c.x+NOTEW&&ly>=c.y&&ly<=c.y+NOTEH)return {type:'task',task:c.task};}
+  // boards take precedence over agents standing in front of them (agents are still clickable elsewhere + in the roster)
+  if(lx>=WB.x-3&&lx<=WB.x+WB.w+3&&ly>=WB.y-3&&ly<=WB.y+WB.h+3)return {type:'board'};
+  if(lx>=GBD.x-3&&lx<=GBD.x+GBD.w+3&&ly>=GBD.y-3&&ly<=GBD.y+GBD.h+3)return {type:'gantt'};
+  for(const a of roster){const e=A[a.id];if(e&&lx>=e.x-7&&lx<=e.x+7&&ly>=e.y-32&&ly<=e.y+1)return {type:'agent',agent:a};}
+  return null;}
+function toLogical(e){const r=cv.getBoundingClientRect();return {lx:(e.clientX-r.left)/r.width*LOGW,ly:(e.clientY-r.top)/r.height*LOGH};}
+cv.addEventListener('mousemove',e=>{const {lx,ly}=toLogical(e);cv.style.cursor=hitTest(lx,ly)?'pointer':'default';});
+cv.addEventListener('click',e=>{const {lx,ly}=toLogical(e);const h=hitTest(lx,ly);if(!h)return;
+  if(h.type==='task')openTask(h.task);else if(h.type==='agent'){selAgent=h.agent.id;openPanel('agents');}else if(h.type==='board')openPanel('board');else if(h.type==='gantt')openGantt();else if(h.type==='project'){if(h.id==='__new')openCreateProject();else switchProject(h.id);}});
+
+/* ---- persistence helpers ---- */
+async function persistState(){if(ELECTRON){try{await window.munder.saveState({state});}catch(e){}}applyState(state);persistProjects();}  // also persist into projects.json so board edits survive a relaunch
+function nextTaskId(){let n=1;const ids=new Set((state.tasks||[]).map(t=>t.id));while(ids.has('t'+n))n++;return 't'+n;}
+function pushHist(id,text){(agentHist[id]=agentHist[id]||[]).push({ts:Date.now(),text});if(agentHist[id].length>200)agentHist[id].shift();
+  if(ELECTRON){try{window.munder.appendAgentMemory({agentId:id,entry:{ts:Date.now(),text}});}catch(e){}}
+  if(currentPanel==='agents'&&selAgent===id&&agentSub==='history')renderTab();}
+
+/* ---- tabs / HUD ---- */
+let currentPanel=null;
+function openPanel(name){currentPanel=name;const m=document.querySelector('.modal');if(m)m.classList.toggle('wide',name==='board'||name==='agents');overlay.classList.remove('hidden');renderTab();}
+function renderTab(){if(!currentPanel)return;if(currentPanel==='overview'){mtitleEl.textContent='OVERVIEW';renderOverview();}else if(currentPanel==='agents'){mtitleEl.textContent='THE TEAM';renderAgents();}else if(currentPanel==='board'){mtitleEl.textContent='KANBAN BOARD';renderBoard();}else if(currentPanel==='terminal'){renderTerminal();}}
+function countByCol(){const c={backlog:0,inprogress:0,review:0,done:0};(state.tasks||[]).forEach(t=>c[colOf(t.status)]++);return c;}
+function renderOverview(){const r=state.request||{},cc=countByCol(),pc={P0:0,P1:0,P2:0,P3:0};(state.tasks||[]).forEach(t=>{if(pc[t.priority]!=null)pc[t.priority]++;});
+  const g=ensureGame()||{score:0,streak:0,combo:0,comboUntil:0,doneIds:[]};const comboNow=(performance.now()-t0<g.comboUntil)?g.combo:1;
+  const su=(projData[activeProj]&&projData[activeProj].standup)||null;
+  const suHtml=su&&su.items&&su.items.length?('<div class="sect" style="margin-top:10px">STANDUP SUGGESTIONS <span class="why" style="margin:0">· updated '+new Date(su.ts).toLocaleTimeString()+'</span></div>'+su.items.map(it=>'<div class="kv" style="display:flex;gap:6px;align-items:flex-start;margin:3px 0"><span class="kc-owner" style="background:'+ownerColor(it.who)+';flex:0 0 auto">'+esc(ownerName(it.who))+'</span><span style="flex:1">'+esc(it.text)+'</span></div>').join('')):'';
+  const byId={};(state.tasks||[]).forEach(t=>byId[t.id]=t);
+  const days=(state.days||[]).map(d=>'<div class="day"><div class="dn">DAY '+d.day+'</div>'+(d.tasks||[]).map(id=>{const t=byId[id];return t?'<div class="ti"><span class="ptag" style="background:'+(PCOL[t.priority]||'#888')+'">'+(t.priority||'')+'</span>'+esc(t.title)+' <small>('+(t.estimateHours||'?')+'h)</small></div>':'';}).join('')+'</div>').join('')||'<div class="why">No schedule yet.</div>';
+  mbody.innerHTML='<div class="proj">'+esc(state.project||'Kanban Office')+'</div><div class="sect">THE ACCOUNT</div>'+
+    '<div class="rt">'+esc(r.title||'—')+'</div><div class="why">'+esc(r.why||'')+'</div>'+(r.priority?'<span class="badge" style="background:'+(PCOL[r.priority]||'#888')+'">'+r.priority+' PRIORITY</span>':'')+
+    '<div class="sect" style="margin-top:10px">WHITEBOARD</div><div class="grid4">'+COLS.map(c=>'<div class="stat" style="background:'+c.accent+'"><b>'+(cc[c.key]||0)+'</b><span>'+c.label+'</span></div>').join('')+'</div>'+
+    '<div class="sect">PRIORITY MIX</div><div class="grid4">'+['P0','P1','P2','P3'].map(p=>'<div class="stat" style="background:'+PCOL[p]+'"><b>'+pc[p]+'</b><span>'+p+'</span></div>').join('')+'</div>'+
+    '<div class="sect">DAILY CHUNKS</div><div class="days">'+days+'</div>'+
+    (lastStandup?'<div class="sect" style="margin-top:8px">LATEST STANDUP</div><div class="why">'+esc(lastStandup)+'</div>':'')+
+    ((projData[activeProj]&&projData[activeProj].lastSuggestion)?'<div class="sect" style="margin-top:8px">ARCHITECT SUGGESTS</div><div class="desc">'+mdLite(projData[activeProj].lastSuggestion)+'</div>':'')+
+    suHtml+
+    '<div class="sect" style="margin-top:10px">PROGRESS</div><div class="grid4">'+
+      '<div class="stat" style="background:#2d3f63"><b>'+g.score+'</b><span>SCORE</span></div>'+
+      '<div class="stat" style="background:#2d6e4f"><b>'+g.streak+'</b><span>STREAK</span></div>'+
+      '<div class="stat" style="background:#b9332e"><b>x'+comboNow+'</b><span>COMBO</span></div>'+
+      '<div class="stat" style="background:#8a5cc0"><b>'+(g.doneIds?g.doneIds.length:0)+'</b><span>DONE</span></div></div>'+
+    '<div class="sect">TEAM LEVELS</div>'+roster.map(a=>{const lv=agentLevel(a.id),cz=equippedCosmetic(a.id),cn=cz?(COSMETICS.find(c=>c.id===cz)||{}).name:'';return '<div class="kv"><b>'+esc(a.name||a.id)+'</b> <span class="rlv">LV '+lv+'</span> · '+agentXp(a.id)+' XP'+(cn?' · '+esc(cn):'')+'</div>';}).join('')+
+    '<div class="sect" style="margin-top:8px">THE MEMO</div><div class="doc">'+(state.docPath?'<code>'+esc(state.docPath)+'</code>':'— not generated yet —')+'</div>';}
+function renderAgents(){const time=performance.now()-t0;
+  if(!selAgent){
+    const head='<div class="subtabs"><div class="stab '+(agentsView==='roster'?'active':'')+'" data-v="roster">ROSTER</div><div class="stab '+(agentsView==='manage'?'active':'')+'" data-v="manage">MANAGE</div><div class="stab" id="agAddNew">+ ADD</div><div class="stab" id="agFolders">📁 FOLDERS</div></div>';
+    if(agentsView==='manage'){mbody.innerHTML=head+managerBodyHtml();wireManager();}
+    else{mbody.innerHTML=head+roster.map(a=>{const busy=agentBusyKind(a.id)!=='idle';
+      return '<div class="acard" data-id="'+a.id+'"><canvas class="rphoto" width="40" height="40"></canvas><div style="flex:1"><div class="nm">'+esc(a.name||a.id)+'</div><div class="rl">'+esc(a.role||NICK[a.id]||'')+' · '+(a.model||'—')+'</div></div><span class="pill">'+agentStateText(a.id)+'</span><span class="stbar '+(busy?'busy':'')+'"><i></i></span></div>';}).join('');
+      mbody.querySelectorAll('.acard').forEach(el=>{const id=el.getAttribute('data-id');el.onclick=()=>{selAgent=id;renderTab();};const cnv=el.querySelector('.rphoto');if(cnv){const a=roster.find(x=>x.id===id);drawPortrait(cnv,(a&&a.app)||(A[id]&&A[id].app)||genApp(a||{id:id}),id);}});}
+    mbody.querySelectorAll('.subtabs .stab[data-v]').forEach(el=>el.onclick=()=>{agentsView=el.getAttribute('data-v');renderTab();});
+    const an=document.getElementById('agAddNew');if(an)an.onclick=openCreateAgent;
+    const af=document.getElementById('agFolders');if(af)af.onclick=openLinks;
+    return;}
+  const a=roster.find(x=>x.id===selAgent)||roster[0];if(!a){selAgent=null;return renderAgents();}
+  if(ELECTRON&&agentHist[a.id]===undefined){agentHist[a.id]=[];window.munder.getAgentMemory({agentId:a.id}).then(m=>{if(Array.isArray(m)&&m.length){agentHist[a.id]=m;if(currentPanel==='agents'&&selAgent===a.id)renderTab();}});}
+  const owned=(state.tasks||[]).filter(t=>t.owner===a.id);
+  const subs=['state','action','history','terminal','rules'];
+  let body='';
+  if(agentSub==='state'){const lv=agentLevel(a.id),xp=agentXp(a.id),cur=xpForLevel(lv),nxt=xpForLevel(lv+1),prog=lv>=8?1:Math.max(0,Math.min(1,(xp-cur)/((nxt-cur)||1))),gm=ensureGame();
+    body='<div class="kv"><b>NAME</b> '+esc(a.name)+'</div><div class="kv"><b>ROLE</b> '+esc(a.role||NICK[a.id]||'')+'</div><div class="kv"><b>MODEL</b> '+(a.model||'—')+'</div><div class="kv"><b>STATE</b> '+agentStateText(a.id)+'</div>'+
+    '<div class="kv"><b>LEVEL '+lv+'</b> · '+xp+' XP'+(lv<8?' · '+(nxt-xp)+' to LV '+(lv+1):' · MAX')+'</div><div class="xpbar"><i style="width:'+Math.round(prog*100)+'%"></i></div>'+
+    '<div class="kv"><b>REWARDS</b> <span class="why" style="margin:0">level up to unlock cosmetics</span></div><div class="cosgrid">'+COSMETICS.map(c=>{const unl=lv>=c.lv,eq=((gm&&gm.equip[a.id])||'none')===c.id;return '<button class="cosbtn'+(eq?' on':'')+(unl?'':' lock')+'" data-c="'+c.id+'"'+(unl?'':' disabled')+'>'+esc(c.name)+(unl?'':' · Lv'+c.lv)+'</button>';}).join('')+'</div>'+
+    '<div class="kv" style="margin-top:8px"><b>OWNS ('+owned.length+')</b></div>'+(owned.map(t=>'<div class="kcard ti" data-id="'+t.id+'" style="border-left-color:'+(PCOL[t.priority]||'#888')+'"><div class="kc-title">'+esc(t.title)+'</div><div class="kc-meta"><span>'+(t.status||'backlog')+'</span><span>'+(t.estimateHours||'?')+'h</span></div></div>').join('')||'<div class="why">No tasks assigned.</div>');}
+  else if(agentSub==='action'){const wip=owned.filter(t=>colOf(t.status)==='inprogress');const bc=(agentHist[a.id]||[]).slice(-10).reverse();
+    body='<div class="kv"><b>STATUS</b> '+agentStateText(a.id)+'</div>'+
+    '<div class="kv" style="margin-top:4px"><b>WORKING ON</b></div>'+(wip.length?wip.map(t=>'<div class="kcard ti" data-id="'+t.id+'" style="border-left-color:'+(PCOL[t.priority]||'#888')+'"><div class="kc-title">'+esc(t.title)+'</div><div class="kc-meta"><span>'+(t.epic?esc(t.epic):'no epic')+'</span><span>'+(t.estimateHours||'?')+'h</span></div></div>').join(''):'<div class="why">Not working a task right now.</div>')+
+    '<div class="kv" style="margin-top:6px"><b>PIPELINE</b></div><div class="row2" style="flex-wrap:wrap;gap:4px">'+COLS.map(c=>{const n=owned.filter(t=>colOf(t.status)===c.key).length;return '<span class="chip" style="background:'+c.accent+'">'+c.label+' '+n+'</span>';}).join('')+'</div>'+
+    '<div class="kv" style="margin-top:8px"><b>BREADCRUMB</b> — what they\'ve done</div><div class="hist">'+(bc.length?bc.map(e=>'<div class="h">'+new Date(e.ts).toLocaleTimeString()+' — '+esc(e.text)+'</div>').join(''):'<div class="why">no activity yet</div>')+'</div>';}
+  else if(agentSub==='history'){const h=agentHist[a.id]||[];body='<div class="hist">'+(h.length?h.slice().reverse().map(e=>'<div class="h">'+new Date(e.ts).toLocaleTimeString()+' — '+esc(e.text)+'</div>').join(''):'<div class="why">No history yet. Runs and board actions appear here, and are saved to the agent-memory folder.</div>')+'</div>';}
+  else if(agentSub==='terminal'){body='<div class="kv"><b>RUNS ON</b> '+(a.model||'its')+' model · your account</div><div class="aterm" id="aterm"></div>'+
+    '<div class="terminput" style="border:2px solid var(--line);border-radius:6px;margin-top:6px"><span>&gt;</span><input id="atermIn" placeholder="Run a prompt as '+esc(a.name||a.id)+'… (Enter)"/></div>';}
+  else {body='<div class="kv"><b>DESCRIPTION</b></div><textarea id="agDesc" rows="2" placeholder="what this agent is for…">'+esc(a.description||'')+'</textarea>'+
+    '<div class="kv"><b>RULESET</b></div><textarea id="agRules" rows="3" placeholder="rules / conventions this agent must follow…">'+esc(a.rules||'')+'</textarea>'+
+    '<div class="kv" style="margin-top:6px"><b>FOLDERS</b></div><div class="flist">'+((a.folders||[]).map(p=>'<div class="f2"><span style="flex:1;word-break:break-all">'+esc(p)+'</span><button class="mini red afrm" data-p="'+esc(p)+'">✕</button></div>').join('')||'<div class="why">none</div>')+'</div>'+
+    '<div class="row2"><button class="mini" id="agAddF">+ FOLDER</button><button class="mini gold" id="agBuild">BUILD .MD</button><button class="mini" id="agSaveP">SAVE</button> <span id="agpStatus" style="color:var(--ink-soft);font-size:13px"></span></div>';}
+  mbody.innerHTML='<div class="row2"><button class="mini" id="backAg">‹ TEAM</button><span class="ava" style="background:'+(a.color||COLORS[a.id]||'#888')+'"></span><b style="font-family:Silkscreen;font-size:11px;color:var(--gold)">'+esc((a.name||a.id).toUpperCase())+'</b></div>'+
+    '<div class="subtabs">'+subs.map(s=>'<div class="stab '+(agentSub===s?'active':'')+'" data-s="'+s+'">'+s.toUpperCase()+'</div>').join('')+'</div>'+body;
+  document.getElementById('backAg').onclick=()=>{selAgent=null;renderTab();};
+  mbody.querySelectorAll('.stab').forEach(el=>el.onclick=()=>{agentSub=el.getAttribute('data-s');renderTab();});
+  mbody.querySelectorAll('.ti[data-id]').forEach(el=>el.onclick=()=>{const t=(state.tasks||[]).find(x=>x.id===el.getAttribute('data-id'));if(t)openTask(t);});
+  if(agentSub==='state'){const gm=ensureGame();mbody.querySelectorAll('.cosbtn').forEach(b=>{if(b.classList.contains('lock')||!gm)return;b.onclick=()=>{gm.equip[a.id]=b.getAttribute('data-c');persistProjects();renderTab();};});}
+  if(agentSub==='terminal'){renderAgentTerm(a.id);const ain=document.getElementById('atermIn');if(ain)ain.addEventListener('keydown',async e=>{if(e.key!=='Enter')return;const v=ain.value.trim();if(!v)return;ain.value='';termLine('> '+v,'sys',a.id);pushHist(a.id,'terminal: '+v);
+    if(!ELECTRON){termLine('Agent terminals run in the desktop app.','dim',a.id);return;}busyUntil[a.id]=performance.now()-t0+600000;
+    try{const r=await window.munder.runAgent({agentId:a.id,name:a.name,role:a.role,model:a.model,rules:a.rules,dirs:a.folders||[],prompt:v});if(!r||!r.ok){busyUntil[a.id]=performance.now()-t0;termLine('failed: '+((r&&r.error)||'?'),'err',a.id);}}catch(err){termLine('error: '+err.message,'err',a.id);}});}
+  if(agentSub==='rules'){const save=async()=>{a.rules=document.getElementById('agRules').value;const dd=document.getElementById('agDesc');if(dd)a.description=dd.value;if(ELECTRON)await window.munder.saveAgents({agents:roster,removed:removedIds});persistProjects();};
+    document.getElementById('agSaveP').onclick=async()=>{await save();document.getElementById('agpStatus').textContent='Saved ✓';};
+    document.getElementById('agAddF').onclick=async()=>{if(!ELECTRON){alert('Desktop app only');return;}const r=await window.munder.pickFolder();if(r&&r.ok&&r.path){a.folders=a.folders||[];if(!a.folders.includes(r.path))a.folders.push(r.path);await save();renderTab();}};
+    mbody.querySelectorAll('.afrm').forEach(b=>b.onclick=async()=>{a.folders=(a.folders||[]).filter(x=>x!==b.getAttribute('data-p'));await save();renderTab();});
+    document.getElementById('agBuild').onclick=async()=>{const st=document.getElementById('agpStatus');if(!ELECTRON){st.textContent='Desktop app only.';return;}await save();st.textContent='Building .md…';busyUntil[a.id]=performance.now()-t0+600000;pushHist(a.id,'build .md');
+      try{const r=await window.munder.buildAgentMd({agentId:a.id,name:a.name,role:a.role,model:a.model,rules:a.rules,dirs:a.folders||[]});st.textContent=r&&r.ok?'.md built ✓':'Failed.';}catch(e){st.textContent='Error: '+e.message;}};}}
+function projTasksOf(pid){if(pid===activeProj)return state.tasks||[];const pd=projData[pid];return (pd&&pd.state&&pd.state.tasks)||[];}
+function renderBoard(){
+  let filter=boardFilter; if(filter!=='all'&&!projects.find(p=>p.id===filter))filter=activeProj;
+  const items=[]; // {t,pid}
+  if(filter==='all')projects.forEach(p=>projTasksOf(p.id).forEach(t=>items.push({t,pid:p.id})));
+  else projTasksOf(filter).forEach(t=>items.push({t,pid:filter}));
+  const epics=[];items.forEach(o=>{if(o.t.epic&&epics.indexOf(o.t.epic)<0)epics.push(o.t.epic);});
+  const by={backlog:[],inprogress:[],review:[],done:[]};items.forEach(o=>{if(epicFilter&&(o.t.epic||'')!==epicFilter)return;by[colOf(o.t.status)].push(o);});
+  const order={P0:0,P1:1,P2:2,P3:3};Object.values(by).forEach(a=>a.sort((x,y)=>(order[x.t.priority]??9)-(order[y.t.priority]??9)));
+  const showTag=filter==='all';
+  let cols='';COLS.forEach(c=>{const arr=by[c.key];let h='';arr.forEach(o=>{const t=o.t,pn=projName(o.pid),tag=pn.length>9?pn.slice(0,9):pn;
+    const rv=currentReviewer(t),rvCh=rv?reviewChain(t):[];
+    const rvLine=rv?'<div class="kc-rev" title="reviewing now">👁 '+esc(rv.name||rv.role||rv.id)+' · '+((t.reviewStep||0)+1)+'/'+rvCh.length+'</div>':'';
+    h+='<div class="kcard" data-id="'+t.id+'" data-proj="'+o.pid+'" style="border-left-color:'+(PCOL[t.priority]||'#888')+'"><div class="kc-top"><span class="kc-id">'+(t.id||'').toUpperCase()+'</span><span class="kc-pri" style="background:'+(PCOL[t.priority]||'#888')+'">'+(t.priority||'')+'</span></div><div class="kc-title">'+esc(t.title)+'</div>'+(t.epic?'<div style="margin:1px 0"><span class="kc-tag" style="background:'+epicColor(t.epic)+'" title="epic">'+esc(t.epic)+'</span></div>':'')+rvLine+'<div class="kc-meta"><span class="kc-owner" style="background:'+ownerColor(t.owner)+'" title="owner">'+esc(ownerName(t.owner))+'</span><span class="kc-tag" style="background:'+sw(o.pid)+'" title="project">'+esc(tag)+'</span><span class="kc-hrs">'+(t.estimateHours||'?')+'h</span></div></div>';});
+    cols+='<div class="kcol"><div class="kcol-head" style="background:'+c.accent+'">'+c.label+'<span>'+arr.length+'</span></div><div class="kcol-body">'+(h||'<div class="why" style="padding:6px">—</div>')+'</div></div>';});
+  const fopts='<option value="all"'+(filter==='all'?' selected':'')+'>ALL PROJECTS</option>'+projects.map(p=>'<option value="'+p.id+'"'+(filter===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+  const distOpts=roster.map(a=>'<option value="'+a.id+'"'+(state.distributor===a.id?' selected':'')+'>'+esc(a.name||a.id)+'</option>').join('');
+  const eopts='<option value="">All epics</option>'+epics.map(e=>'<option value="'+esc(e)+'"'+(epicFilter===e?' selected':'')+'>'+esc(e)+'</option>').join('');
+  const doneN=by.done.length;
+  mbody.innerHTML='<div class="row2"><button class="mini gold" id="addTaskBtn">+ ADD TASK</button><span style="font-size:12px;color:var(--ink-soft)">Project:</span><select class="f" id="bdFilter" style="width:auto">'+fopts+'</select><span style="font-size:12px;color:var(--ink-soft)">Epic:</span><select class="f" id="bdEpic" style="width:auto">'+eopts+'</select><span style="font-size:12px;color:var(--ink-soft)">Distributor:</span><select class="f" id="distSel" style="width:auto">'+distOpts+'</select>'+(doneN?'<button class="mini" id="clrDone" style="margin-left:auto">🧹 CLEAR DONE ('+doneN+')</button>':'')+'</div><div class="kboard">'+cols+'</div>';
+  {const be=document.getElementById('bdEpic');if(be)be.onchange=e=>{epicFilter=e.target.value;renderTab();};}
+  {const cd=document.getElementById('clrDone');if(cd)cd.onclick=()=>{if(!confirm('Remove all Done tasks from the board? (XP/levels are kept.)'))return;const rm=t=>colOf(t.status)==='done';
+    const clr=st=>{if(!st)return;st.tasks=(st.tasks||[]).filter(t=>!rm(t));const ids=(st.tasks||[]).map(t=>t.id);(st.days||[]).forEach(d=>d.tasks=(d.tasks||[]).filter(x=>ids.includes(x)));};
+    if(filter==='all')projects.forEach(p=>clr(projData[p.id]&&projData[p.id].state));else clr(state);
+    if(ELECTRON&&window.munder.saveState){try{window.munder.saveState({state});}catch(e){}}persistProjects();renderTab();};}
+  mbody.querySelectorAll('.kcard[data-id]').forEach(el=>el.onclick=()=>{const pid=el.getAttribute('data-proj'),id=el.getAttribute('data-id');if(pid&&pid!==activeProj)switchProject(pid);const t=(state.tasks||[]).find(x=>x.id===id);if(t)openTask(t);});
+  document.getElementById('bdFilter').onchange=e=>{const v=e.target.value;if(v==='all')boardFilter='all';else{boardFilter=v;if(v!==activeProj)switchProject(v);}renderTab();};
+  document.getElementById('addTaskBtn').onclick=()=>{if(filter!=='all'&&filter!==activeProj)switchProject(filter);openAddTask();};
+  document.getElementById('distSel').onchange=e=>{state.distributor=e.target.value;busyBoard[state.distributor]=performance.now()-t0+4000;persistState();};}
+
+/* ---- modal: task detail + edit + add ---- */
+const overlay=document.getElementById('overlay'),mbody=document.getElementById('mbody'),mtitleEl=document.getElementById('mtitle');
+function openModal(title,html,wide){currentPanel=null;mtitleEl.textContent=title;mbody.innerHTML=html;const m=document.querySelector('.modal');if(m)m.classList.toggle('wide',!!wide);overlay.classList.remove('hidden');}
+function closeModal(){if(taskReturnPanel){const p=taskReturnPanel;taskReturnPanel=null;openPanel(p);return;}overlay.classList.add('hidden');currentPanel=null;}
+function showUpdatePrompt(u){const notes=(u.notes||'').trim();
+  openModal('UPDATE AVAILABLE — v'+u.latest,
+    '<div class="why">A new version (<b>v'+u.latest+'</b>) is available. You\'re on v'+u.current+'.</div>'+
+    (notes?'<div class="desc" style="max-height:200px;overflow:auto">'+mdLite(notes)+'</div>':'')+
+    '<div class="row2" style="margin-top:10px;gap:6px"><button class="mini gold" id="upNow">UPDATE NOW</button><button class="mini" id="upPage">RELEASE PAGE</button><button class="mini" id="upLater">LATER</button></div>'+
+    '<div id="upSt" class="dim" style="margin-top:6px"></div>');
+  document.getElementById('upLater').onclick=closeModal;
+  document.getElementById('upPage').onclick=()=>{if(u.page&&window.munder.openExternal)window.munder.openExternal(u.page);};
+  document.getElementById('upNow').onclick=async()=>{const st=document.getElementById('upSt');
+    if(!u.url){if(u.page&&window.munder.openExternal)window.munder.openExternal(u.page);return;}
+    document.getElementById('upNow').textContent='Downloading…';if(st)st.textContent='Downloading the installer — the app will restart to update.';
+    try{const r=await window.munder.downloadUpdate(u.url);if(!r||!r.ok){if(st)st.textContent='Download failed — opening the release page.';if(u.page&&window.munder.openExternal)window.munder.openExternal(u.page);}}
+    catch(e){if(st)st.textContent='Error — opening the release page.';if(u.page&&window.munder.openExternal)window.munder.openExternal(u.page);}};}
+document.getElementById('mclose').onclick=closeModal;overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+function selOpts(list,val){return list.map(o=>'<option value="'+o+'"'+(o===val?' selected':'')+'>'+o+'</option>').join('');}
+// lightweight markdown for task descriptions (headings, bullets, numbered, **bold** *italic* `code`)
+function mdLite(src){if(!src||!src.trim())return '<span class="why">(no description)</span>';let s=esc(src);
+  s=s.replace(/^###\s?(.*)$/gm,'<h4>$1</h4>').replace(/^##\s?(.*)$/gm,'<h3>$1</h3>').replace(/^#\s?(.*)$/gm,'<h3>$1</h3>');
+  s=s.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  const lines=s.split('\n');let out='',ul=false,ol=false;const close=()=>{if(ul){out+='</ul>';ul=false;}if(ol){out+='</ol>';ol=false;}};
+  lines.forEach(ln=>{const t=ln.trim();
+    if(/^<h[34]>/.test(t)){close();out+=t;}
+    else if(/^[-*•]\s+/.test(t)){if(!ul){close();out+='<ul>';ul=true;}out+='<li>'+t.replace(/^[-*•]\s+/,'')+'</li>';}
+    else if(/^\d+[.)]\s+/.test(t)){if(!ol){close();out+='<ol>';ol=true;}out+='<li>'+t.replace(/^\d+[.)]\s+/,'')+'</li>';}
+    else if(!t){close();}
+    else{close();out+='<p>'+t+'</p>';}});
+  close();return out;}
+function openTask(t){const ownerOpts=roster.map(a=>'<option value="'+a.id+'"'+(t.owner===a.id?' selected':'')+'>'+esc(a.name||a.id)+'</option>').join('');
+  const elist=epicList();const edl='<datalist id="epicDL">'+elist.map(e=>'<option value="'+esc(e)+'">').join('')+'</datalist>';
+  const html='<div class="row2"><span class="chip" style="background:'+sw(activeProj)+'">'+esc(projName())+'</span>'+(t.epic?'<span class="chip" style="background:'+epicColor(t.epic)+'">'+esc(t.epic)+'</span>':'')+'<span class="chip" style="background:'+(PCOL[t.priority]||'#888')+'">'+(t.priority||'')+'</span><span class="chip" style="background:'+ownerColor(t.owner)+'">'+esc(ownerName(t.owner))+'</span>'+((()=>{const r=currentReviewer(t);if(!r)return '';const ch=reviewChain(t);return '<span class="chip" style="background:#4aa3ff">👁 reviewing: '+esc(r.name||r.role||r.id)+' ('+((t.reviewStep||0)+1)+'/'+ch.length+')</span>';})())+' '+(t.estimateHours||'?')+'h · day '+(t.day||'?')+'</div>'+
+    '<div class="desc">'+mdLite(t.description)+'</div>'+(t.reviewNotes?'<div class="sect" style="margin-top:8px">REVIEW</div><div class="desc" style="border-color:var(--teal)">'+mdLite(t.reviewNotes)+'</div>':'')+edl+
+    '<div class="row2"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">DESCRIPTION</b> <span class="why" style="margin:0">markdown — edit &amp; save</span></div><textarea id="edDesc" rows="4">'+esc(t.description||'')+'</textarea>'+
+    '<div class="row2"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">EPIC</b><input class="f" id="edEpic" list="epicDL" value="'+esc(t.epic||'')+'" placeholder="category" style="width:140px"/></div>'+
+    '<div class="row2"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">OWNER</b><select class="f" id="edOwner" style="width:auto">'+ownerOpts+'</select>'+
+    '<b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">STATUS</b><select class="f" id="edStatus" style="width:auto">'+selOpts(['backlog','in-progress','review','done'],colOf(t.status)==='inprogress'?'in-progress':colOf(t.status))+'</select>'+
+    '<b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">PRI</b><select class="f" id="edPri" style="width:auto">'+selOpts(['P0','P1','P2','P3'],t.priority||'P2')+'</select></div>'+
+    '<div class="row2"><button class="mini gold" id="edSave">SAVE</button><button class="mini red" id="edDel">REMOVE TASK</button></div>'+
+    '<div class="row2"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">REQUEST CHANGE</b></div><textarea id="chgNote" rows="2" placeholder="ask the team to revise this task…"></textarea><div class="row2"><button class="mini" id="chgBtn">REQUEST CHANGE ▸</button> <span id="chgStatus" style="font-size:13px;color:var(--ink-soft)"></span></div>';
+  taskReturnPanel=(currentPanel==='board')?'board':null;   // came from the board → return to it on close
+  openModal((t.id||'').toUpperCase()+' · '+(t.title||''),html);
+  document.getElementById('edSave').onclick=()=>{const oldCol=colOf(t.status);const o=document.getElementById('edOwner').value,s=document.getElementById('edStatus').value,p=document.getElementById('edPri').value;
+    const changedOwner=o!==t.owner;t.owner=o;t.status=s;t.priority=p;t.epic=document.getElementById('edEpic').value.trim();const dd=document.getElementById('edDesc');if(dd)t.description=dd.value;busyBoard[o]=performance.now()-t0+4000;if(changedOwner)pushHist(o,'assigned '+t.id+' ('+t.title+')');closeModal();persistState();
+    const nc=colOf(s);if(nc==='inprogress'&&oldCol!=='inprogress')startStageRun(t,'wip');else if(nc==='review'&&oldCol!=='review'){t.reviewStep=0;startStageRun(t,'review');}};
+  document.getElementById('edDel').onclick=()=>{state.tasks=(state.tasks||[]).filter(x=>x.id!==t.id);(state.days||[]).forEach(d=>d.tasks=(d.tasks||[]).filter(id=>id!==t.id));if(t.owner)busyBoard[t.owner]=performance.now()-t0+4000;closeModal();persistState();};
+  document.getElementById('chgBtn').onclick=()=>{const note=document.getElementById('chgNote').value.trim();if(!note){document.getElementById('chgStatus').textContent='Type a change.';return;}fileChange(t,note);};}
+function openAddTask(){if(!activeProj){openCreateProject();return;}const ownerOpts=roster.filter(a=>a.id!=='architect'&&a.id!=='client').map(a=>'<option value="'+a.id+'">'+esc(a.name||a.id)+'</option>').join('');
+  const elist=epicList();const edl='<datalist id="epicDLn">'+elist.map(e=>'<option value="'+esc(e)+'">').join('')+'</datalist>';
+  const html=edl+'<div class="row2"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">TITLE</b></div><input class="f" id="ntTitle" placeholder="short imperative title"/>'+
+    '<div class="row2"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">EPIC</b><input class="f" id="ntEpic" list="epicDLn" placeholder="category (optional)" style="width:160px"/></div>'+
+    '<div class="row2"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">DESC</b></div><textarea id="ntDesc" rows="2" placeholder="what to do + acceptance"></textarea>'+
+    '<div class="row2"><b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">OWNER</b><select class="f" id="ntOwner" style="width:auto">'+ownerOpts+'</select>'+
+    '<b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">STATUS</b><select class="f" id="ntStatus" style="width:auto">'+selOpts(['backlog','in-progress','review','done'],'backlog')+'</select>'+
+    '<b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">PRI</b><select class="f" id="ntPri" style="width:auto">'+selOpts(['P0','P1','P2','P3'],'P2')+'</select>'+
+    '<b style="font-family:Silkscreen;font-size:8px;color:var(--teal)">HRS</b><input class="f" id="ntHrs" type="number" value="3" style="width:56px"/></div>'+
+    '<div class="row2"><button class="mini gold" id="ntAdd">ADD TO BOARD ▸</button></div>';
+  openModal('ADD TASK',html);
+  document.getElementById('ntAdd').onclick=()=>{const title=document.getElementById('ntTitle').value.trim();if(!title)return;
+    const t={id:nextTaskId(),title,epic:document.getElementById('ntEpic').value.trim(),description:document.getElementById('ntDesc').value.trim(),owner:document.getElementById('ntOwner').value,status:document.getElementById('ntStatus').value,priority:document.getElementById('ntPri').value,estimateHours:Number(document.getElementById('ntHrs').value)||3,deps:[],day:1};
+    state.tasks=state.tasks||[];state.tasks.push(t);busyBoard[t.owner]=performance.now()-t0+4000;pushHist(t.owner,'new task '+t.id+' ('+t.title+')');closeModal();persistState();};}
+
+/* ---- terminal ---- */
+function termLine(text,cls,who){who=who||'main';const buf=(termBuffers[who]=termBuffers[who]||[]);buf.push({text,cls});if(buf.length>500)buf.shift();
+  if(who==='main'&&currentPanel==='terminal'){const te=document.getElementById('term');if(te){const d=document.createElement('span');d.className='ln'+(cls?' '+cls:'');d.textContent=text;te.appendChild(d);te.scrollTop=te.scrollHeight;}}
+  if(who!=='main'&&currentPanel==='agents'&&selAgent===who&&agentSub==='terminal'){const ae=document.getElementById('aterm');if(ae){const d=document.createElement('span');d.className='ln'+(cls?' '+cls:'');d.textContent=text;ae.appendChild(d);ae.scrollTop=ae.scrollHeight;}}}
+function renderAgentTerm(id){const ae=document.getElementById('aterm');if(!ae)return;ae.innerHTML='';(termBuffers[id]||[]).forEach(l=>{const d=document.createElement('span');d.className='ln'+(l.cls?' '+l.cls:'');d.textContent=l.text;ae.appendChild(d);});ae.scrollTop=ae.scrollHeight;}
+function termState(){}
+/* ---- notifications + audio cues ---- */
+let _ac=null;
+function chime(kind){try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const ac=_ac;if(ac.state==='suspended')ac.resume();
+  const notes=kind==='err'?[392,294,196]:[523,659,784,1047];let t=ac.currentTime;
+  notes.forEach((f,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=f;o.connect(g);g.connect(ac.destination);const s=t+i*0.10;g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(0.2,s+0.02);g.gain.exponentialRampToValueAtTime(0.0001,s+0.18);o.start(s);o.stop(s+0.2);});}catch(e){}}
+function agentPhotoURL(id){try{const a=roster.find(x=>x.id===id);const cv=document.createElement('canvas');cv.width=cv.height=36;drawPortrait(cv,(a&&a.app)||genApp(a||{id:id}),id);return cv.toDataURL();}catch(e){return null;}}
+function toast(msg,kind,who){let w=document.getElementById('toastwrap');if(!w){w=document.createElement('div');w.id='toastwrap';document.body.appendChild(w);}
+  const d=document.createElement('div');d.className='toast '+(kind||'');const url=who?agentPhotoURL(who):null;
+  d.innerHTML=(url?'<img src="'+url+'" style="width:22px;height:22px;image-rendering:pixelated;border-radius:4px;vertical-align:middle;margin-right:8px;border:1px solid #0006">':'')+'<span style="vertical-align:middle">'+esc(msg)+'</span>';
+  w.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));setTimeout(()=>{d.classList.remove('show');setTimeout(()=>d.remove(),400);},4400);}
+function notify(title,msg,kind,who){toast(msg||title,kind,who);chime(kind);try{if('Notification'in window&&Notification.permission==='granted'){const icon=who?agentPhotoURL(who):null;new Notification('Kanban Office',{body:(title?title+' — ':'')+(msg||''),icon:icon||undefined});}}catch(e){}}
+function noteBadge(){const b=document.getElementById('notesBtn');if(!b)return;const n=(projData[activeProj]||{}).noteNew||0;b.textContent='NOTES'+(n>0?' ('+n+')':'');}
+function addProjectNote(projId,text,system,agent){if(!projId)return;const pd=projData[projId]||(projData[projId]={});const notes=pd.notes||(pd.notes=[]);if(notes.some(n=>n.text===text))return;notes.push({ts:Date.now(),text,agent:agent||null});if(system)pd.noteNew=(pd.noteNew||0)+1;persistProjects();if(ELECTRON&&window.munder.appendAgentMemory)window.munder.appendAgentMemory({agentId:'project-'+projId,entry:{ts:Date.now(),text:'note: '+text}});noteBadge();}
+function setStatus(m,c){const txt2=(m||'').replace(/<[^>]+>/g,'').replace(/&#9654;/g,'▸');termLine(txt2,c==='err'?'err':(c==='ok'?'ok':'dim'));}
+function officeStatus(){const time=performance.now()-t0;const anyBusy=!!activeAgent||Object.values(busyUntil).some(v=>v>time)||Object.values(busyWork).some(v=>v>time);if(planning)return anyBusy?'PLANNING':'THINKING';if(anyBusy)return'WORKING';return'IDLE';}
+const STCOL={IDLE:'#8a93ad',THINKING:'#4aa3ff',WORKING:'#ffd34d',PLANNING:'#46d6c0'};
+function updateStatusChip(){const s=officeStatus(),b=document.getElementById('termBtn');if(b){b.textContent='▶ TERMINAL · '+s;b.style.color=STCOL[s];b.style.borderColor=STCOL[s];}const ts=document.getElementById('termstate');if(ts){ts.textContent=s;ts.style.color=STCOL[s];}const p=document.getElementById('termStatePill');if(p){p.textContent=s;p.style.color=STCOL[s];p.style.borderColor=STCOL[s];}}
+function wipTaskOf(id){return (state.tasks||[]).find(t=>t.owner===id&&colOf(t.status)==='inprogress');}
+function agentBusyKind(id){const time=performance.now()-t0;if(planning&&id==='architect')return'plan';if(activeAgent===id||(busyUntil[id]||0)>time||(busyWork[id]||0)>time||(busyBoard[id]||0)>time)return'work';return'idle';}  // working = an active run; only idle/work/plan
+const RKDOT={work:'#ffd34d',plan:'#46d6c0',idle:'#8a93ad'};
+const RKLABEL={work:'WORKING',plan:'PLANNING',idle:'IDLE'};
+function renderRoster(){const el=document.getElementById('roster');if(!el)return;
+  const chip=a=>{const k=agentBusyKind(a.id);return '<div class="rchip" data-id="'+a.id+'"><canvas class="rphoto" width="36" height="36"></canvas><div class="rinfo"><span class="rnm">'+esc(a.name||a.id)+' <span class="rlv">LV '+agentLevel(a.id)+'</span></span><span class="rpos">'+esc(a.role||NICK[a.id]||'')+'</span><span class="rstat" style="color:'+RKDOT[k]+'"><i style="background:'+RKDOT[k]+'"></i>'+RKLABEL[k]+'</span></div></div>';};
+  const lead=roster.filter(a=>a.id==='architect'||a.id==='client'),team=roster.filter(a=>a.id!=='architect'&&a.id!=='client');
+  el.innerHTML='<div class="rgroup"><span class="rlabel">LEADERSHIP</span>'+lead.map(chip).join('')+'</div><div class="rdiv"></div><div class="rgroup"><span class="rlabel">THE TEAM</span>'+team.map(chip).join('')+'<div class="raddchip" id="rAdd">＋ NEW AGENT</div></div>';
+  el.querySelectorAll('.rchip').forEach(c=>{const id=c.getAttribute('data-id');c.onclick=()=>{selAgent=id;openPanel('agents');};const cnv=c.querySelector('.rphoto');if(cnv){const a=roster.find(x=>x.id===id);drawPortrait(cnv,(a&&a.app)||(A[id]&&A[id].app)||genApp(a||{id:id}),id);}});
+  const add=document.getElementById('rAdd');if(add)add.onclick=openCreateAgent;}
+function updateRosterDots(){const el=document.getElementById('roster');if(!el)return;el.querySelectorAll('.rchip').forEach(c=>{const id=c.getAttribute('data-id'),k=agentBusyKind(id);const d=c.querySelector('.rdot');if(d)d.style.background=RKDOT[k];const s=c.querySelector('.rstat');if(s){s.style.color=RKDOT[k];s.innerHTML='<i style="background:'+RKDOT[k]+'"></i>'+RKLABEL[k];}const lv=c.querySelector('.rlv');if(lv)lv.textContent='LV '+agentLevel(id);});}
+let _tick=0;setInterval(()=>{updateStatusChip();updateRosterDots();noteBadge();updateAutoBtn();   // light UI refresh every 400ms
+  if((++_tick%3)===0){try{cleanupSpecialistNotes();}catch(e){}try{ensureFlow();}catch(e){}}},400);   // heavier flow/cleanup every ~1.2s to save CPU
+function summaryText(){const c={backlog:0,inprogress:0,review:0,done:0};(state.tasks||[]).forEach(t=>c[colOf(t.status)]++);const total=(state.tasks||[]).length;return c.done+' done · '+c.inprogress+' WIP · '+c.review+' review · '+c.backlog+' backlog (of '+total+').';}
+function postSummary(tag){lastStandup=summaryText();termLine('['+(tag||'summary')+'] '+lastStandup,'agent');if(ELECTRON&&window.munder.appendAgentMemory)window.munder.appendAgentMemory({agentId:'architect',entry:{ts:Date.now(),text:(tag||'summary')+': '+lastStandup}});if(currentPanel==='overview')renderTab();}
+function genStandupSuggestions(){const ts=state.tasks||[];const has=id=>roster.some(a=>a.id===id);const who=id=>has(id)?id:'architect';const col=k=>ts.filter(t=>colOf(t.status)===k);const s=[];
+  if(!ts.length){return [{who:'architect',text:'No tasks yet — capture the next product requirement from client feedback to seed the Backlog.'}];}
+  const back=col('backlog'),wip=col('inprogress'),rev=col('review'),done=col('done');
+  const hot=back.filter(t=>t.priority==='P0'||t.priority==='P1');
+  if(hot.length)s.push({who:who('scheduler'),text:hot.length+' high-priority item'+(hot.length>1?'s sit':' sits')+' in Backlog ('+hot.slice(0,3).map(t=>(t.id||'').toUpperCase()).join(', ')+') — break them down next.'});
+  const thin=back.concat(wip).filter(t=>!t.description||t.description.length<40);
+  if(thin.length)s.push({who:who('gamedesign'),text:thin.length+' task'+(thin.length>1?'s need':' needs')+' a fuller technical/design spec before review.'});
+  const noEst=ts.filter(t=>!t.estimateHours||!t.durationDays);
+  if(noEst.length)s.push({who:who('estimator'),text:noEst.length+' task'+(noEst.length>1?'s have':' has')+' no estimate or duration — size them so the Gantt holds up.'});
+  const orphan=ts.filter(t=>!t.owner||!roster.some(a=>a.id===t.owner));
+  if(orphan.length)s.push({who:'architect',text:orphan.length+' task'+(orphan.length>1?'s aren’t':' isn’t')+' owned by anyone on the team — distribute to a specialist.'});
+  if(rev.length)s.push({who:who('taskwriter'),text:rev.length+' task'+(rev.length>1?'s are':' is')+' in Review — confirm acceptance criteria + timeline, then mark Done.'});
+  const pct=Math.round(done.length/ts.length*100);
+  s.push({who:'architect',text:'Plan is '+pct+'% fully-specified ('+done.length+'/'+ts.length+') for "'+projName()+'". '+(pct<50?'Push the backlog breakdown.':'Tidy up the last items.')});
+  return s.slice(0,5);}
+function doStandup(){standupUntil=(performance.now()-t0)+22000;standupPhase='gather';}   // open the standup: agents gather in the conference room; the meeting begins once everyone arrives
+function teamArrived(){return roster.filter(a=>a.id!=='client').every(a=>{const e=A[a.id];return e&&!e.moving&&e.state==='standup';});}
+function runStandupContent(){postSummary('standup');const time=performance.now()-t0;
+  const sug=genStandupSuggestions();
+  if(activeProj){const pd=projData[activeProj]||(projData[activeProj]={});pd.standup={ts:Date.now(),items:sug};
+    const body='📋 **Standup**\n'+sug.map(it=>'- **'+ownerName(it.who)+':** '+it.text).join('\n');   // also log the standup to Notes (mdLite renders; dedupes if unchanged)
+    addProjectNote(activeProj,body,false);persistProjects();if(currentPanel==='overview')renderTab();}
+  const byWho={};sug.forEach(x=>{if(!byWho[x.who])byWho[x.who]=x.text;});
+  roster.forEach(a=>{const e=A[a.id];if(e&&activeAgent!==a.id){e.bubble=byWho[a.id]||pick(STANDUP);e.bubbleUntil=time+4200;}});}
+function teamConstraint(){const list=roster.map(a=>'  - '+a.id+'  ("'+(a.name||a.id)+'", '+(a.role||NICK[a.id]||'specialist')+', model '+(a.model||'sonnet')+')').join('\n');
+  return '\n\nIMPORTANT — THE TEAM: this office has ONLY these agents. Set every task\'s "owner" to one of these exact agent ids and never invent or use any other agent. If a needed skill is missing, give the task to the closest-fit teammate. You may delegate work to these agents (they each have their own terminal and can work simultaneously). Agents (owner id → who):\n'+list+'\nFORMAT: write each task "description" as short markdown — a one-line **bold** goal, then a bullet list of acceptance criteria — not a wall of text. Also give every task an "epic" field: a short category/theme it belongs to (e.g. "Onboarding", "Combat", "UI") so the board can be grouped — reuse the same epic name across related tasks.\nMISSING SPECIALIST: if the work needs a specialty no current teammate covers (e.g. an Unreal Engine expert), do NOT invent or assign a non-existent agent. Instead output it on its own line as: SUGGEST AGENT: <name> | <role/position> | <model: haiku|sonnet|opus> | <DETAILED ruleset: 2–4 specifics of exactly what they do, the standards they follow and the detail they must produce — separate with "; "> | <a 1–2 sentence DESCRIPTION naming their specialization and exactly what they own and produce for this product> — so the user can create that agent.\n';}
+function architectModel(){const a=roster.find(x=>x.id==='architect');return (a&&a.model)||undefined;}  // terminal/planning runs on the Architect's chosen model
+function architectRole(){return 'You are the Architect/Manager. You know the product well and plan at a HIGH LEVEL — turn the request into well-scoped BACKLOG tasks and assign each to the specialist who should own its detailed breakdown (e.g. the Game Designer plans features & parameters; the Engineering/Unreal expert plans the technical approach, Blueprints → C++ and how it is built). Set priority and review; do NOT write the deep spec yourself — the owning specialist fills it in (on their own model) when the task moves to WIP. If a needed specialty is missing from the team, recommend adding that specialist (see SUGGEST AGENT below) instead of doing the work yourself.';}
+/* ---- stage-driven flow: WIP triggers the owner to write the spec; Review triggers a reviewer to confirm + size ---- */
+function currentReviewer(t){if(!t||colOf(t.status)!=='review')return null;const ch=reviewChain(t);return roster.find(a=>a.id===ch[Math.min(t.reviewStep||0,Math.max(0,ch.length-1))])||null;}
+function reviewChain(t){const ownerA=roster.find(a=>a.id===(t&&t.owner));const ownerCat=ownerA?roleCat((ownerA.role||'')+' '+(ownerA.name||'')):null;
+  const isSpec=a=>a.id!=='architect'&&a.id!=='client'&&a.id!==(t&&t.owner);
+  const pref=ownerCat==='design'?'eng':(ownerCat==='eng'?'design':null);   // designer↔engineer cross-review
+  let peer=pref?roster.find(a=>isSpec(a)&&roleCat((a.role||'')+' '+(a.name||''))===pref):null;
+  if(!peer)peer=roster.find(a=>isSpec(a)&&roleCat((a.role||'')+' '+(a.name||''))&&roleCat((a.role||'')+' '+(a.name||''))!==ownerCat);   // any other-discipline specialist
+  if(!peer)peer=roster.find(a=>isSpec(a)&&roleCat((a.role||'')+' '+(a.name||'')));   // any other specialist
+  const ch=[];if(peer)ch.push(peer.id);                                              // 1) peer review (different discipline than the owner)
+  if(roster.some(a=>a.id==='architect'))ch.push('architect');                        // 2) Product Manager (the Manager)
+  if(t&&t.owner&&roster.some(a=>a.id===t.owner)&&ch.indexOf(t.owner)<0)ch.push(t.owner);  // 3) final check by the original owner
+  return ch.length?ch:(roster.some(a=>a.id==='architect')?['architect']:[(roster[0]||{}).id].filter(Boolean));}
+function reviewLabel(t,id){if(id===(t&&t.owner))return 'final owner check';if(id==='architect')return 'Product Manager review';return 'peer review';}
+function stageRunner(t,kind){if(kind==='review'){const ch=reviewChain(t);return roster.find(a=>a.id===ch[Math.min(t.reviewStep||0,ch.length-1)])||roster.find(a=>a.id==='architect')||roster[0];}return roster.find(a=>a.id===t.owner)||roster.find(a=>a.id==='architect')||roster[0];}
+function startStageRun(t,kind){if(!ELECTRON||!t)return;const a=stageRunner(t,kind);if(!a||stageCaps[a.id])return;
+  if(kind==='wip')wipStarted[activeProj+'/'+t.id]=true;
+  stageCaps[a.id]={taskId:t.id,projId:activeProj,buf:'',kind,runner:a.id,started:performance.now()-t0};
+  busyUntil[a.id]=performance.now()-t0+600000;acceptState=true;runProj=activeProj;
+  const TID=(t.id||'').toUpperCase();let prompt;
+  if(kind==='review'){const ch=reviewChain(t),step=Math.min(t.reviewStep||0,Math.max(0,ch.length-1)),lbl=reviewLabel(t,a.id);pushHist(a.id,lbl+' '+TID+' (step '+(step+1)+'/'+ch.length+')');
+    prompt='You are '+(a.name||a.id)+' ('+(a.role||NICK[a.id]||'')+'). This is the '+lbl.toUpperCase()+' — review step '+(step+1)+' of '+ch.length+' (peer → Product Manager → original owner).'+projContext()+'\n\nTask '+TID+': '+(t.title||'')+(t.epic?'\nEpic: '+t.epic:'')+'\nSpec:\n'+(t.description||'(none)')+'\n\nReview it from YOUR perspective ('+lbl+'): confirm the acceptance criteria, phases (MVP first) and notes are complete and correct for your area; list any gaps/concerns as 1–3 bullets. Output ONLY a short markdown starting with "Review:". If small specialty edits would make it pass, make them yourself: add a section starting with a line "SPEC EDIT:" then the full revised description in markdown (it replaces the spec) and approve. Then a line "ESTIMATE: <n>h", a line "DAYS: <n>", and a final line exactly "VERDICT: approved" (passes / you fixed it) or "VERDICT: rework" (needs the owner to redo it).';
+    termLine('['+(a.name||a.id)+'] '+lbl+' '+TID+'…','agent',a.id);}
+  else{pushHist(a.id,'breaking down '+TID);
+    prompt='You are '+(a.name||a.id)+' ('+(a.role||NICK[a.id]||'specialist')+'). Break this planning task into a complete, reviewable spec.'+projContext()+'\n\nTask '+TID+': '+(t.title||'')+(t.epic?'\nEpic: '+t.epic:'')+(t.description?'\nCurrent notes: '+t.description:'')+(t.reviewNotes?'\n\nREVIEW NOTES — the team\'s last review of this task. Read these carefully and factor every point into your spec (address requested changes, and take any additional considerations into account):\n'+t.reviewNotes:'')+'\n\nWrite ONLY the finished description in concise markdown with EXACTLY these sections:\n- a one-line **bold** goal\n- "## Acceptance criteria" — a short bullet list\n- "## Phases" — development phases as a bullet list, the FIRST bullet labelled **MVP** (smallest shippable slice), then follow-up phases (v1, v2…)\n- "## Notes" — brief technical/design notes for your specialty\nThen a final line exactly "ESTIMATE: <n>h" (your rough sizing).\nIMPORTANT: if this task is larger than 3 working days ('+(3*(state.capacityHoursPerDay||6))+'h at '+(state.capacityHoursPerDay||6)+'h/day), do NOT spec it as one task — instead break it down: output ONLY a section starting with a line "SPLIT:" then one bullet per sub-task as "- <short title> | <hours>h" (each ≤ 3 days). It will be replaced by those sub-tasks. No preamble or sign-off.';
+    termLine('['+(a.name||a.id)+'] breaking down '+TID+'…','agent',a.id);}
+  window.munder.runAgent({agentId:a.id,name:a.name,role:a.role,model:a.model,rules:a.rules,dirs:a.folders||[],prompt}).then(r=>{if(!r||!r.ok){delete stageCaps[a.id];busyUntil[a.id]=performance.now()-t0;termLine((kind==='review'?'review':'breakdown')+' failed','err',a.id);}}).catch(()=>{delete stageCaps[a.id];});}
+function applyStageResult(cap){const txt=(cap.buf||'').trim();const pd=projData[cap.projId];const src=(cap.projId===activeProj)?state:((pd&&pd.state)||null);const tk=src&&(src.tasks||[]).find(x=>x.id===cap.taskId);if(!tk)return;
+  // >3-day task → the owner split it into sub-tasks: replace the parent with them (each re-enters the flow)
+  if(cap.kind==='wip'){const sp=txt.match(/SPLIT:\s*([\s\S]*)$/i);
+    if(sp){const cap2=cap;const lines=sp[1].split('\n').map(l=>l.trim()).filter(l=>/^[-*]/.test(l));
+      if(lines.length>=2){const cph=src.capacityHoursPerDay||6,epic=tk.epic||tk.title;let n=0;const ex=new Set((src.tasks||[]).map(x=>x.id));
+        const subs=lines.map(l=>{const m=l.replace(/^[-*]\s*/,'').split('|');const title=(m[0]||'').trim();const hrs=parseInt((m[1]||'').replace(/[^0-9]/g,''))||cph;let id;do{id=tk.id+'-'+String.fromCharCode(97+(n++));}while(ex.has(id));ex.add(id);
+          return {id,title:title||('Part '+n),epic,owner:tk.owner,priority:tk.priority||'P2',status:'backlog',estimateHours:Math.min(hrs,cph*3),durationDays:Math.max(1,Math.min(3,Math.ceil(hrs/cph))),description:'_Part of '+(tk.title||tk.id)+'._',deps:[],day:1};});
+        src.tasks=(src.tasks||[]).filter(x=>x.id!==tk.id).concat(subs);(src.days||[]).forEach(d=>d.tasks=(d.tasks||[]).filter(x=>x!==tk.id));clearTaskGuards(cap.projId,tk.id);
+        pushHist(cap.runner,(tk.id||'').toUpperCase()+' was too big → split into '+subs.length+' tasks');
+        if(cap.projId===activeProj){applyState(state);if(ELECTRON&&window.munder.saveState)window.munder.saveState({state});}persistProjects();
+        notify('Task split',ownerName(tk.owner)+' broke '+(tk.id||'').toUpperCase()+' into '+subs.length+' smaller tasks','ok',cap.runner);if(currentPanel)renderTab();return;}}}
+  const em=txt.match(/ESTIMATE:\s*(\d+)/i);if(em)tk.estimateHours=Number(em[1]);
+  const dm=txt.match(/DAYS:\s*(\d+)/i);if(dm)tk.durationDays=Number(dm[1]);
+  if(cap.kind==='wip'&&txt)tk.description=txt.replace(/\n?ESTIMATE:.*$/i,'').trim();
+  pushHist(cap.runner,(cap.kind==='review'?'reviewed ':'wrote spec for ')+(cap.taskId||'').toUpperCase());
+  let toReview=false,toDone=false,toBack=false;
+  if(cap.kind==='wip'&&colOf(tk.status)==='inprogress'){tk.status='review';tk.reviewStep=0;tk.reviewNotes='';clearTaskGuards(cap.projId,tk.id);toReview=true;pushHist(cap.runner,(cap.taskId||'').toUpperCase()+' → review (spec written)');}  // a finished breakdown enters the review chain
+  else if(cap.kind==='review'){
+    const ch=reviewChain(tk),step=Math.min(tk.reviewStep||0,Math.max(0,ch.length-1)),lbl=reviewLabel(tk,cap.runner);
+    let work=txt; const se=work.search(/SPEC EDIT:/i);
+    if(se>=0){const spec=work.slice(se).replace(/^[^]*?SPEC EDIT:\s*/i,'').trim();if(spec)tk.description=spec;work=work.slice(0,se);pushHist(cap.runner,(cap.taskId||'').toUpperCase()+' '+lbl+': edited the spec');}   // reviewer may revise the description for their specialty
+    const body=work.replace(/\n?ESTIMATE:.*$/i,'').replace(/\n?DAYS:.*$/i,'').replace(/\n?VERDICT:.*$/i,'').trim();
+    if(step===0)tk.reviewNotes='';if(body)tk.reviewNotes=(tk.reviewNotes||'')+(tk.reviewNotes?'\n\n':'')+'### '+lbl+'\n'+body;   // one accumulated review section
+    const rework=/VERDICT\s*:?\s*rework/i.test(txt);
+    if(rework&&(tk._reworks||0)<2){tk._reworks=(tk._reworks||0)+1;tk.status='backlog';tk.reviewStep=0;clearTaskGuards(cap.projId,tk.id);toBack=true;pushHist(cap.runner,(cap.taskId||'').toUpperCase()+' '+lbl+' → back to backlog (rework '+tk._reworks+'/2)');}
+    else{if(rework)pushHist(cap.runner,(cap.taskId||'').toUpperCase()+' rework cap reached — proceeding');   // cap reached → force the chain forward (no infinite loop / no stuck)
+      tk.reviewStep=(tk.reviewStep||0)+1;
+      if(tk.reviewStep>=ch.length){tk.status='done';toDone=true;pushHist(cap.runner,(cap.taskId||'').toUpperCase()+' passed all reviews → done');}
+      else{toReview=true;pushHist(cap.runner,(cap.taskId||'').toUpperCase()+' '+lbl+' ✓ → '+reviewLabel(tk,ch[tk.reviewStep]));}}}
+  if(cap.projId===activeProj){applyState(state);if(ELECTRON&&window.munder.saveState)window.munder.saveState({state});}persistProjects();
+  const nm=(roster.find(a=>a.id===cap.runner)||{}).name||cap.runner;notify(cap.kind==='review'?'Review done':'Spec ready',nm+' '+(cap.taskId||'').toUpperCase()+(toReview?' → Review':'')+(toDone?' → Done ✓':'')+(toBack?' → Backlog (rework)':''),'ok',cap.runner);
+  if(currentPanel)renderTab();}   // the next review step is started by ensureFlow (keyed per step)
+function ensureFlow(){if(!ELECTRON||!activeProj||!autoFlow||roundtable)return;normalizeOwners();cleanupSpecialistNotes();const ts=state.tasks||[];const order={P0:0,P1:1,P2:2,P3:3};const now=performance.now()-t0;let moved=false;
+  Object.keys(stageCaps).forEach(k=>{const c=stageCaps[k];if(c&&now-(c.started||0)>180000){delete stageCaps[k];busyUntil[k]=now;clearTaskGuards(c.projId,c.taskId);}});   // recover a hung run (>3min): free the agent + let the task run again
+  // any task whose owner isn't on the team → raise a "missing specialist" note (don't silently hand it off)
+  ts.forEach(t=>{if(t.owner&&!roster.some(a=>a.id===t.owner)){
+    const m=matchAgent(t);if(m){pushHist(m.id,'Manager assigned '+(t.id||'').toUpperCase()+' ('+(t.title||'')+')');t.owner=m.id;clearTaskGuards(activeProj,t.id);moved=true;return;}   // a fitting agent exists (e.g. just created) → assign it now so the task restarts
+    const raw=/^agent[0-9a-z]{5,}$/i.test(t.owner);const role=raw?inferRole(t):(NICK[t.owner]||t.owner);const ag={name:role,role:role,model:'sonnet',forOwner:t.owner,rules:'Owns the '+role+' aspects of every task; turns high-level goals into concrete '+role+' detail (e.g. features & parameters, or the technical approach); flags risks and dependencies; reports specific work items to the Manager.',description:'A '+role+' on the planning team for "'+projName()+'". They take the Manager\'s tasks and produce the detailed '+role+' plan — specifics, standards and trade-offs for their specialty — reporting back to the Manager. Read-only: they plan, they don\'t write product files.'};
+    if(!specialistCovered(activeProj,role))addProjectNote(activeProj,'🧩 Missing specialist: '+role+' — needed to plan tasks in this specialty. Use ＋ CREATE AGENT to prefill, then Save.',true,ag);}});
+  // each free agent pulls their highest-priority BACKLOG task into WIP and starts working it
+  roster.forEach(a=>{if(stageCaps[a.id])return;if(ts.some(t=>t.owner===a.id&&colOf(t.status)==='inprogress'))return;
+    const back=ts.filter(t=>t.owner===a.id&&colOf(t.status)==='backlog');if(!back.length)return;
+    back.sort((x,y)=>(order[x.priority]??9)-(order[y.priority]??9));const t=back[0];
+    t.status='inprogress';pushHist(a.id,'picked up '+(t.id||'').toUpperCase()+' from backlog');moved=true;});   // straight into WIP — the run starts immediately
+  // WIP tasks: run the breakdown once (it advances to Review on completion — no shortcut, so reworked tasks get re-spec'd)
+  ts.forEach(t=>{const key=activeProj+'/'+t.id;
+    if(colOf(t.status)!=='inprogress'){if(wipStarted[key])delete wipStarted[key];return;}
+    if(wipStarted[key])return;                                                     // a run already kicked off for this WIP entry
+    const a=stageRunner(t,'wip');if(!a||stageCaps[a.id])return;startStageRun(t,'wip');});
+  // REVIEW tasks with no active reviewer → run the review (covers reviewer-was-busy / manual moves)
+  ts.forEach(t=>{if(colOf(t.status)!=='review')return;const rkey='rv:'+activeProj+'/'+t.id+':'+(t.reviewStep||0);   // one run per review step (Designer → PM → owner)
+    if(wipStarted[rkey])return;
+    const a=stageRunner(t,'review');if(!a||stageCaps[a.id])return;wipStarted[rkey]=true;startStageRun(t,'review');});
+  if(moved&&ELECTRON&&window.munder.saveState){try{window.munder.saveState({state});}catch(e){}persistProjects();}}
+function runMainPrompt(v){if(!activeProj){termLine('Create a project first — use the PROJECTS button (top bar).','err');openCreateProject();return;}const pj='For project "'+projName()+'": ';if(ELECTRON){termLine('['+projName()+'] > '+v+' · '+(architectModel()||'default'),'sys');planning=true;acceptState=true;runProj=activeProj;window.munder.runPrompt({prompt:architectRole()+'\n\n'+pj+v+projContext()+teamConstraint(),model:architectModel()}).then(r=>{if(!r||!r.ok){planning=false;termLine('failed: '+((r&&r.error)||'?'),'err');}}).catch(err=>{planning=false;termLine('error: '+err.message,'err');});}
+  else if(SERVER){fetch('/api/request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({feature:pj+v,priority:'P1',capacity:6})}).then(r=>r.json()).then(j=>termLine(j.ok?'Filed ▸ the Architect picked it up.':'Server rejected it.',j.ok?'ok':'err')).catch(()=>termLine('Server unreachable.','err'));}
+  else termLine('Launch the desktop app to run Claude Code.','dim');}
+function renderTerminal(){mtitleEl.textContent='CLAUDE CODE';
+  const projSel='<span style="font-size:12px;color:var(--ink-soft)">Planning for</span><select class="f" id="termProj" style="width:auto">'+(projects.length?projects.map(p=>'<option value="'+p.id+'"'+(p.id===activeProj?' selected':'')+'>'+esc(p.name)+'</option>').join(''):'<option value="">— create a project —</option>')+'</select>';
+  mbody.innerHTML='<div class="row2"><span class="pill" id="termStatePill">'+officeStatus()+'</span>'+projSel+'<span id="termstate" style="margin-left:auto;font-family:Silkscreen;font-size:9px"></span></div>'+
+    '<div class="term" id="term" style="height:320px;border:2px solid var(--line);border-radius:6px"></div>'+
+    '<div class="terminput" style="border:2px solid var(--line);border-radius:6px;margin-top:6px"><span>&gt;</span><input id="termIn" placeholder="Plan a feature for the selected project… e.g. a dynamic weather system, P1, 6h a day (Enter)"/></div>';
+  const tp=document.getElementById('termProj');if(tp)tp.onchange=()=>{const v=tp.value;if(v&&v!==activeProj){switchProject(v);renderTab();}};
+  const te=document.getElementById('term');(termBuffers.main||[]).forEach(l=>{const d=document.createElement('span');d.className='ln'+(l.cls?' '+l.cls:'');d.textContent=l.text;te.appendChild(d);});te.scrollTop=te.scrollHeight;
+  const ti=document.getElementById('termIn');ti.focus();ti.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const v=ti.value.trim();if(!v)return;ti.value='';runMainPrompt(v);});}
+
+/* ---- change request ---- */
+async function fileChange(t,note){const st=document.getElementById('chgStatus'),feature='Task '+t.id+' ('+(t.title||'')+'): '+note;
+  if(ELECTRON){if(st)st.textContent='Sending…';planning=true;acceptState=true;runProj=activeProj;try{const r=await window.munder.fileRequest({feature,priority:t.priority||'P1',capacity:state.capacityHoursPerDay||6,mode:'change',team:teamConstraint(),model:architectModel()});if(st)st.textContent=r&&r.ok?'Change applied.':'Failed.';if(!r||!r.ok)planning=false;}catch(e){planning=false;if(st)st.textContent='Error: '+e.message;}}
+  else if(SERVER){try{const r=await fetch('/api/request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({feature,priority:t.priority||'P1',capacity:6,mode:'change'})});const j=await r.json();if(st)st.textContent=j.ok?'Filed.':'Failed.';}catch(e){if(st)st.textContent='Server unreachable.';}}
+  else{if(st)st.textContent='Desktop app or server needed.';}}
+
+/* ---- manager + links modals ---- */
+function openCreateAgent(prefill){let folder=null;const L='style="font-family:\'Silkscreen\',monospace;font-size:8px;color:var(--teal)"';
+  const html='<div class="row2"><canvas id="caPhoto" class="rphoto" width="48" height="48" style="width:46px;height:46px"></canvas>'+
+    '<div style="flex:1"><div class="kv"><b>NAME</b></div><input class="f" id="caName" placeholder="e.g. Dwight Calzone"/></div>'+
+    '<button class="mini" id="caRand" title="randomize appearance" style="font-size:16px">🎲</button></div>'+
+    '<div class="kv"><b>POSITION</b></div><input class="f" id="caRole" placeholder="e.g. Sales / Scope"/>'+
+    '<div class="row2"><b '+L+'>MODEL</b><select class="f" id="caModel" style="width:auto">'+selOpts(['haiku','sonnet','opus'],'sonnet')+'</select>'+
+    '<b '+L+'>COLOR</b><input class="f" id="caColor" type="color" value="#4aa3ff" style="width:40px;padding:1px"/></div>'+
+    '<div class="kv"><b>DESCRIPTION</b></div><textarea id="caDesc" rows="3" placeholder="who this agent is and what they own — written into their claude.md (the more specific, the better)"></textarea>'+
+    '<div class="kv"><b>RULESET</b></div><textarea id="caRules" rows="3" placeholder="rules / conventions this agent must follow"></textarea>'+
+    '<div class="row2"><button class="mini" id="caFolder">📁 RULES / .MD FOLDER</button> <span id="caFp" style="font-size:12px;color:var(--ink-soft);word-break:break-all">none</span></div>'+
+    '<div class="why" style="font-size:12px">Created read-only for safety (tools: Read, Grep, Glob). Saved as a readable file named from the position, e.g. <code>.claude/agents/game-designer.md</code>.</div>'+
+    '<div class="row2"><button class="mini gold" id="caCreate">CREATE AGENT ▸</button></div>';
+  openModal('NEW AGENT',html);
+  let caSeed='';
+  const preview=()=>{const cv=document.getElementById('caPhoto');if(!cv)return;const nm=document.getElementById('caName').value,rl=(document.getElementById('caRole')||{}).value||'';const pid=slugId(nm||rl||'agent');const a={id:pid,name:nm,color:document.getElementById('caColor').value,appSeed:caSeed};const app=genApp(a);app.shirt=a.color;drawPortrait(cv,app,pid);};
+  if(prefill){const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};set('caName',prefill.name);set('caRole',prefill.role);set('caModel',prefill.model);set('caDesc',prefill.description);set('caRules',prefill.rules);}
+  preview();
+  document.getElementById('caName').addEventListener('input',preview);
+  document.getElementById('caColor').addEventListener('input',preview);
+  document.getElementById('caRand').onclick=()=>{caSeed=String(Math.floor(Math.random()*1e9));preview();};
+  document.getElementById('caFolder').onclick=async()=>{if(!ELECTRON){alert('Folder picking works in the desktop app.');return;}const r=await window.munder.pickFolder();if(r&&r.ok&&r.path){folder=r.path;document.getElementById('caFp').textContent=r.path;}};
+  document.getElementById('caCreate').onclick=async()=>{const nm=(document.getElementById('caName').value.trim()||'New Agent'),role=(document.getElementById('caRole').value.trim()||'specialist');const id=slugId(nm||role);
+    const a={id,name:nm,role,model:document.getElementById('caModel').value,color:document.getElementById('caColor').value,appSeed:caSeed,description:document.getElementById('caDesc').value.trim(),rules:document.getElementById('caRules').value.trim(),tools:'Read, Grep, Glob',folders:folder?[folder]:[]};
+    roster.push(a);ensureAgents();renderRoster();if(ELECTRON){try{await window.munder.saveAgents({agents:roster,removed:removedIds});}catch(e){}}persistProjects();selAgent=id;openPanel('agents');};}
+function managerBodyHtml(){let rows='';roster.forEach((a,i)=>{rows+='<div class="row2" data-i="'+i+'" style="gap:5px"><canvas class="rphoto mrp" width="32" height="32" style="width:26px;height:26px"></canvas><input class="f an" style="flex:1.2" value="'+esc(a.name||'')+'"/><input class="f ar" style="flex:1.4" value="'+esc(a.role||'')+'"/><select class="f am" style="width:auto"><option'+(a.model==='haiku'?' selected':'')+'>haiku</option><option'+(a.model==='sonnet'?' selected':'')+'>sonnet</option><option'+(a.model==='opus'?' selected':'')+'>opus</option></select><input class="f ac" type="color" value="'+(a.color||COLORS[a.id]||'#5a6a8a')+'" style="width:34px;padding:1px"/><button class="mini fdr" title="rules/.md folder">📁'+((a.folders&&a.folders.length)?' '+a.folders.length:'')+'</button><button class="mini red rm">✕</button></div>';});
+  return '<div id="agRows">'+rows+'</div><div class="row2"><button class="mini" id="addAg">+ ADD AGENT</button><button class="mini gold" id="saveAg">SAVE ROSTER ▸</button> <span id="agStatus" style="font-size:13px;color:var(--ink-soft)"></span></div><div class="why" style="margin-top:6px">Models write into <code>.claude/agents/*.md</code> on save. Open an agent in ROSTER to edit its description, ruleset, folders &amp; terminal.</div>';}
+function reRenderManager(){if(currentPanel==='agents')renderTab();else openManager();}
+function wireManager(){
+  mbody.querySelectorAll('.rm').forEach(b=>b.onclick=()=>{commitMgr();const i=+b.parentElement.getAttribute('data-i');const a=roster[i];if(a&&!removedIds.includes(a.id))removedIds.push(a.id);roster.splice(i,1);persistProjects();reRenderManager();});
+  mbody.querySelectorAll('.fdr').forEach(b=>b.onclick=async()=>{commitMgr();const i=+b.parentElement.getAttribute('data-i');if(!ELECTRON){alert('Folder picking works in the desktop app.');return;}const r=await window.munder.pickFolder();if(r&&r.ok&&r.path){const a=roster[i];a.folders=a.folders||[];if(!a.folders.includes(r.path))a.folders.push(r.path);persistProjects();reRenderManager();}});
+  mbody.querySelectorAll('.mrp').forEach((cv,i)=>{const a=roster[i];if(a)drawPortrait(cv,a.app||genApp(a),a.id);});
+  mbody.querySelectorAll('.row2[data-i]').forEach(row=>{const i=+row.getAttribute('data-i');const upd=()=>{const a=roster[i];if(!a)return;a.name=row.querySelector('.an').value;a.color=row.querySelector('.ac').value;const cv=row.querySelector('.mrp');if(cv)drawPortrait(cv,genApp(a),a.id);};const an=row.querySelector('.an'),ac=row.querySelector('.ac');if(an)an.addEventListener('input',upd);if(ac)ac.addEventListener('input',upd);});
+  const ab=document.getElementById('addAg');if(ab)ab.onclick=()=>{commitMgr();const nm='New Agent '+(roster.length+1);roster.push({id:slugId(nm),name:nm,role:'specialist',model:'sonnet',color:'#'+((hashStr('a'+roster.length)&0xffffff).toString(16).padStart(6,'0'))});persistProjects();reRenderManager();};
+  const sb=document.getElementById('saveAg');if(sb)sb.onclick=async()=>{commitMgr();ensureAgents();renderRoster();const st=document.getElementById('agStatus');
+    if(ELECTRON){try{const r=await window.munder.saveAgents({agents:roster,removed:removedIds});if(st)st.textContent=r&&r.ok?'Saved ✓':'Failed';removedIds=[];}catch(e){if(st)st.textContent='Error: '+e.message;}}else if(st)st.textContent='Saved locally.';persistProjects();};}
+function openManager(){openModal('MANAGE AGENTS — '+roster.length,managerBodyHtml());wireManager();}
+function commitMgr(){const el=document.getElementById('agRows');if(!el)return;el.querySelectorAll('.row2').forEach(row=>{const i=+row.getAttribute('data-i');const a=roster[i];if(!a)return;a.name=row.querySelector('.an').value.trim()||a.id;a.role=row.querySelector('.ar').value.trim();a.model=row.querySelector('.am').value;a.color=row.querySelector('.ac').value;});}
+function openLinks(){const rm='class="mini red rmlink"';const lst=arr=>arr.length?arr.map(r=>'<div class="f2" style="display:flex;gap:6px;align-items:center;margin:3px 0"><span class="chip" style="background:'+(r.type==='rules'?'#9a6ad0':'#36b07a')+'">'+r.type+'</span><span style="flex:1;font-size:12px;word-break:break-all;color:var(--ink-soft)">'+esc(r.path)+'</span><button '+rm+' data-p="'+esc(r.path)+'">✕</button></div>').join(''):'<div class="why">none</div>';
+  const rules=links.refs.filter(r=>r.type==='rules'),proj=links.refs.filter(r=>r.type==='project');
+  openModal('LINK FOLDERS','<div class="sect">RULESET FOLDERS</div>'+lst(rules)+'<div class="row2"><button class="mini" id="addRules">+ RULES FOLDER</button></div>'+
+    '<div class="sect" style="margin-top:8px">PROJECT / GIT FOLDERS</div>'+lst(proj)+'<div class="row2"><button class="mini" id="addProj">+ PROJECT FOLDER</button></div>'+
+    '<div class="row2" style="margin-top:8px"><button class="mini gold" id="buildRules">BUILD RULESET ▸</button> <span id="lkStatus" style="font-size:13px;color:var(--ink-soft)"></span></div><div class="why">Linked folders pass to Claude Code via <code>--add-dir</code> on every run.</div>'+
+    '<div class="sect" style="margin-top:10px">RESET</div><div class="row2"><button class="mini red" id="resetTeam">RESET EVERYTHING</button> <span class="why" style="margin:0">factory reset — removes all projects, tasks &amp; custom agents and clears levels/rewards</span></div>');
+  if(!ELECTRON)document.getElementById('lkStatus').textContent='Desktop app only.';
+  const add=async type=>{if(!ELECTRON){alert('Desktop app only');return;}const r=await window.munder.pickFolder();if(r&&r.ok&&r.path){if(!links.refs.some(x=>x.path===r.path))links.refs.push({path:r.path,type});await window.munder.saveLinks({refs:links.refs});openLinks();}};
+  document.getElementById('addRules').onclick=()=>add('rules');document.getElementById('addProj').onclick=()=>add('project');
+  mbody.querySelectorAll('.rmlink').forEach(b=>b.onclick=async()=>{links.refs=links.refs.filter(x=>x.path!==b.getAttribute('data-p'));if(ELECTRON)await window.munder.saveLinks({refs:links.refs});openLinks();});
+  document.getElementById('buildRules').onclick=async()=>{const st=document.getElementById('lkStatus');if(!ELECTRON){st.textContent='Desktop app only.';return;}const rf=links.refs.filter(r=>r.type==='rules').map(r=>r.path);if(!rf.length){st.textContent='Add a rules folder first.';return;}
+    st.textContent='Building…';planning=true;acceptState=true;runProj=activeProj;termState('running');try{const r=await window.munder.runPrompt({prompt:'Read the linked ruleset folders and synthesize the team ruleset: update CLAUDE.md and the relevant .claude/agents/*.md. Ruleset folders: '+rf.join(' ; ')+'. Keep it tight.',model:architectModel()});st.textContent=r&&r.ok?'Built ✓':'Failed.';if(!r||!r.ok)planning=false;}catch(e){planning=false;st.textContent='Error: '+e.message;}};
+  const rt=document.getElementById('resetTeam');if(rt)rt.onclick=async()=>{if(!confirm('Factory reset? This removes ALL projects, tasks and custom agents, and clears levels/rewards.'))return;
+    roster.forEach(a=>{if(!BUILTIN_IDS[a.id]&&!removedIds.includes(a.id))removedIds.push(a.id);});
+    projects=[];activeProj=null;projData={};state=emptyState('—');roster=defaultRoster();gameState=null;ensureGame();
+    selAgent=null;boardFilter='';ganttFilter='';cards={};A={};ensureAgents();applyState(state);renderRoster();
+    if(ELECTRON){try{await window.munder.saveAgents({agents:roster,removed:removedIds});}catch(e){}removedIds=[];try{await window.munder.saveState({state});}catch(e){}}
+    persistProjects();closeModal();renderTab();};}
+document.getElementById('ovBtn').onclick=()=>openPanel('overview');
+document.getElementById('agBtn').onclick=()=>{selAgent=null;openPanel('agents');};
+document.getElementById('bdBtn').onclick=()=>openPanel('board');
+document.getElementById('pjBtn').onclick=openProjects;
+document.getElementById('gnBtn').onclick=openGantt;
+document.getElementById('notesBtn').onclick=openNotes;
+document.getElementById('termBtn').onclick=()=>openPanel('terminal');
+document.getElementById('rtBtn').onclick=openRoundtable;
+function updateAutoBtn(){const b=document.getElementById('autoBtn');if(!b)return;b.textContent='⚙ AUTO-FLOW: '+(autoFlow?'ON':'OFF');if(autoFlow){b.style.background='linear-gradient(180deg,#2d6e4f,#1f4f38)';b.style.color='#dfffe9';b.style.borderColor='#46d6c0';b.style.boxShadow='0 0 12px #46d6c077';}else{b.style.background='var(--panel2)';b.style.color='var(--ink-soft)';b.style.borderColor='var(--line)';b.style.boxShadow='none';}}
+document.getElementById('autoBtn').onclick=()=>{autoFlow=!autoFlow;updateAutoBtn();toast('Auto-flow '+(autoFlow?'ON — agents pull backlog & run WIP/Review':'OFF — move cards manually'),autoFlow?'ok':'');};
+updateAutoBtn();
+
+/* ---- modes ---- */
+function setLive(on,label){const c=document.getElementById('liveChip');c.classList.toggle('on',on);document.getElementById('liveTxt').textContent=label||(on?"LIVE":"OFFLINE");}
+function firstRunWelcome(){if(projects.length)return;
+  openModal('WELCOME TO KANBAN OFFICE',
+    '<div class="why" style="font-size:14px;line-height:1.55">A living office that runs <b>Claude Code</b> (on your account) to plan your product.<br><br>'+
+    '<b>1 ·</b> Create a project.<br><b>2 ·</b> Build your team in <b>AGENTS</b> — the Architect leads; add specialists (designer, engineer, etc.).<br><b>3 ·</b> Open the <b>TERMINAL</b>, pick the project, and type a feature — the team plans it onto the board &amp; Gantt.</div>'+
+    '<div class="row2" style="margin-top:12px"><button class="mini gold" id="fwCreate">＋ CREATE YOUR FIRST PROJECT</button><button class="mini" id="fwSkip">Explore first</button></div>');
+  const c=document.getElementById('fwCreate');if(c)c.onclick=()=>{closeModal();openCreateProject();};
+  const s=document.getElementById('fwSkip');if(s)s.onclick=closeModal;}
+if(ELECTRON){setLive(true,"CLAUDE LIVE");termLine('Kanban Office — Claude Code terminal ready (your account).','dim');termState('idle');
+  try{if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}
+  if(window.munder.getProjects)window.munder.getProjects().then(cfg=>{if(!cfg){firstRunWelcome();return;}
+    if(cfg.game){gameState=cfg.game;}
+    else if(cfg.data){const m={score:0,combo:0,comboUntil:0,streak:0,lastDoneDate:'',doneIds:[],stage:{},xp:{},equip:{},seenProjects:{},_init:true,flashUntil:0,flashTxt:''};Object.keys(cfg.data).forEach(pid=>{const og=cfg.data[pid]&&cfg.data[pid].game;if(og){m.score+=og.score||0;for(const k in (og.xp||{}))m.xp[k]=(m.xp[k]||0)+og.xp[k];Object.assign(m.equip,og.equip||{});m.streak=Math.max(m.streak,og.streak||0);}m.seenProjects[pid]=true;});gameState=m;}  // migrate old per-project rewards into the global pool
+    if(cfg.projects&&cfg.projects.length){projects=cfg.projects;activeProj=cfg.active||projects[0].id;projData=cfg.data||{};if(!projData[activeProj])projData[activeProj]={state:emptyState(projName())};state=projData[activeProj].state;roster=(cfg.baseRoster&&cfg.baseRoster.length)?cfg.baseRoster:((projData[activeProj]&&projData[activeProj].roster)||defaultRoster());cards={};ensureAgents();renderRoster();renderTab();}
+    else if(cfg.baseRoster&&cfg.baseRoster.length){roster=cfg.baseRoster;ensureAgents();renderRoster();renderTab();}
+    try{migrateAgentIds();}catch(e){}try{cleanupSpecialistNotes();}catch(e){}
+    if(!projects.length)firstRunWelcome();});
+  if(window.munder.getLinks)window.munder.getLinks().then(l=>{if(l&&l.refs)links=l;});
+  if(window.munder.checkUpdate)setTimeout(()=>{window.munder.checkUpdate().then(u=>{if(u&&u.ok&&u.newer)showUpdatePrompt(u);}).catch(()=>{});},4000);
+  window.munder.onState(s=>{if(!acceptState)return;const tgt=runProj||activeProj;if(!tgt)return;   // route the plan result to the project the run was launched for
+    if(tgt===activeProj){applyState(s);if(projData[tgt])projData[tgt].state=state;}
+    else if(projData[tgt]){projData[tgt].state=s;}
+    persistProjects();});
+  window.munder.onEvent(ev=>{
+    if(ev.kind==='agent-start'){activeAgent=ev.agent;busyUntil[ev.agent]=performance.now()-t0+9000;pushHist(ev.agent,'started working');}
+    if(ev.kind==='architect-busy')busyUntil['architect']=performance.now()-t0+5000;
+    if(ev.kind==='term'){termLine(ev.text,ev.cls,ev.who);if(suggestMode&&!ev.who&&!ev.cls&&!/^[$\[●■➜]/.test(ev.text))suggestBuf+=ev.text+'\n';const _sc=ev.who&&stageCaps[ev.who];if(_sc&&!ev.cls&&ev.text)_sc.buf+=ev.text+'\n';
+      if(roundtable&&!ev.cls&&ev.text){if(roundtable.phase==='gather'&&ev.who&&roundtable.pending[ev.who])roundtable.answers[ev.who]=(roundtable.answers[ev.who]||'')+ev.text+'\n';else if(roundtable.phase==='synth'&&!ev.who&&!/^[$\[●■➜⚙↳➤]/.test(ev.text))roundtable.synthBuf+=ev.text+'\n';}
+      if(ev.text&&/^\s*SUGGEST AGENT:/i.test(ev.text)){const tgt=runProj||activeProj;const line=ev.text.trim().replace(/^SUGGEST AGENT:\s*/i,'');const p=line.split('|').map(s=>s.trim());
+        const ag={name:p[0]||'New Specialist',role:p[1]||'specialist',model:(/(haiku|sonnet|opus)/i.exec(p[2]||'')||[])[1]||'sonnet',rules:p[3]||'',description:(p[4]&&p[4].length>8)?p[4]:('A '+(p[1]||'specialist')+' on the planning team for "'+projName()+'". They own the '+(p[1]||'specialty')+' side of features — turning the Manager\'s high-level tasks into concrete, specialty-specific plans'+(p[3]?': '+p[3]:'.')+' They report detailed work items to the Manager and never write product files.')};
+        if(!specialistCovered(tgt,ag.role)){addProjectNote(tgt,'🧩 Add specialist: '+ag.name+' — '+ag.role+' · '+ag.model+(ag.rules?(' · '+ag.rules):''),true,ag);notify('New specialist suggested',ag.name+' ('+ag.role+')','ok');}}}
+    if(ev.kind==='stderr')termLine(ev.text,'err',ev.who);
+    if(ev.kind==='started'){if(ev.who){busyUntil[ev.who]=performance.now()-t0+600000;}else planning=true;termState('running');}
+    if(ev.kind==='done'){
+      if(roundtable&&!ev.who&&roundtable.phase==='synth'){planning=false;rtSave();termState(ev.ok?'done':'error');return;}
+      if(roundtable&&ev.who&&roundtable.pending&&roundtable.pending[ev.who]){busyUntil[ev.who]=performance.now()-t0;rtDone(ev.who);termState('idle');return;}
+      if(ev.who){busyUntil[ev.who]=performance.now()-t0;const sc=stageCaps[ev.who];if(sc){delete stageCaps[ev.who];if(ev.ok)applyStageResult(sc);else{toast('Run failed for '+(sc.taskId||'').toUpperCase()+' — will retry','err');clearTaskGuards(sc.projId,sc.taskId);}}else{pushHist(ev.who,'finished ('+(ev.ok?'ok':'error')+')');const an=(roster.find(a=>a.id===ev.who)||{}).name||ev.who;toast(an+(ev.ok?' finished its task':' hit an error'),ev.ok?'ok':'err');}}
+      else{planning=false;activeAgent=null;runProj=null;
+        if(suggestMode){suggestMode=false;if(projData[activeProj]){projData[activeProj].lastSuggestion=(suggestBuf.trim()||'(no suggestions returned)').slice(0,1400);persistProjects();}termLine('[suggestions] saved to project memory.','ok');if(currentPanel==='overview')renderTab();notify('Architect suggestions ready','Saved to project memory — see Overview.','ok');}
+        else if(ev.ok){postSummary('done');notify('Planning complete','The team finished planning — board & Gantt updated.','ok');}
+        else notify('Planning failed','Something went wrong — check the terminal.','err');}
+      termState(ev.ok?'done':'error');setStatus(ev.ok?"Done ▸ updated.":"Run ended with an error — see terminal.",ev.ok?"ok":"err");}});
+  window.munder.getState().then(()=>{cards={};if(activeProj)applyState(state);else{ensureAgents();renderTab();}});}  // projData (projects.json) is the source of truth — don't override it with the shared office-state.json mirror
+else if(SERVER){setLive(true,"SERVER LIVE");termLine('Browser mode — embedded terminal runs in the desktop app.','dim');let last=null;
+  async function poll(){try{const r=await fetch('office-state.json?t='+Date.now(),{cache:'no-store'});if(r.ok){const t=await r.text();if(t&&t!==last){last=t;applyState(JSON.parse(t));}}}catch(e){}}
+  poll();setInterval(poll,2000);}
+else{setLive(false,"OFFLINE");document.getElementById('foot').innerHTML='Offline (file://). Launch the Kanban Office desktop app for live mode.';termLine('Offline — launch the desktop app to run Claude Code in itself.','dim');ensureAgents();renderTab();}
+function fitFloor(){const cv=document.getElementById('floor');if(!cv)return;const card=cv.parentElement;
+  const availW=card.clientWidth-16;                                              // floorcard padding
+  const foot=document.getElementById('foot'),fh=foot?foot.offsetHeight+12:28;
+  const availH=Math.max(220,window.innerHeight-card.getBoundingClientRect().top-fh-12);
+  const ar=1840/1008;let w=availW,h=w/ar;if(h>availH){h=availH;w=h*ar;}            // contain: largest size fitting both width and height
+  cv.style.width=Math.round(w)+'px';cv.style.height=Math.round(h)+'px';}
+window.addEventListener('resize',fitFloor);
+ensureAgents();renderRoster();renderTab();fitFloor();setTimeout(fitFloor,60);requestAnimationFrame(drawScene);
+</script>
+</body>
+</html>
