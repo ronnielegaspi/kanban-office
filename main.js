@@ -8,7 +8,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const { spawn } = require('child_process');
 try { app.setName('Kanban Office'); app.setAppUserModelId('com.kanbanoffice.app'); } catch (e) {}   // shows as "Kanban Office" (not Electron) in Task Manager / taskbar
 const https = require('https'); const os = require('os');
-const UPDATE_REPO = 'YOUR_GH_USER/kanban-office';   // ← set to your GitHub repo "owner/name" that hosts the Releases
+const UPDATE_REPO = 'ronnielegaspi/kanban-office';   // GitHub repo "owner/name" that hosts the Releases
 function _httpsJson(url) { return new Promise((res, rej) => { https.get(url, { headers: { 'User-Agent': 'KanbanOffice' } }, r => { if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location) return res(_httpsJson(r.headers.location)); let d = ''; r.on('data', c => d += c); r.on('end', () => { try { res(JSON.parse(d)); } catch (e) { rej(e); } }); }).on('error', rej); }); }
 function _download(url, dest) { return new Promise((res, rej) => { https.get(url, { headers: { 'User-Agent': 'KanbanOffice' } }, r => { if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location) return res(_download(r.headers.location, dest)); const f = fs.createWriteStream(dest); r.pipe(f); f.on('finish', () => f.close(() => res(dest))); }).on('error', e => { try { fs.unlinkSync(dest); } catch (_) {} rej(e); }); }); }
 function _semverGt(a, b) { const pa = ('' + a).replace(/^v/, '').split('.').map(Number), pb = ('' + b).replace(/^v/, '').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((pa[i] || 0) > (pb[i] || 0)) return true; if ((pa[i] || 0) < (pb[i] || 0)) return false; } return false; }
