@@ -1,7 +1,7 @@
 ﻿{
   "name": "kanban-office",
   "productName": "Kanban Office",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Kanban Office â€” a living pixel PM office that runs Claude Code in itself to turn requests into day-by-day plans on a kanban whiteboard.",
   "main": "main.js",
   "scripts": {
