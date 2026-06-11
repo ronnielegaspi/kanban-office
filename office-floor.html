@@ -163,7 +163,7 @@
 <div class="wrap">
   <header>
     <div class="brand"><div class="logo">KO</div>
-      <div><h1>KANBAN OFFICE</h1><div class="sub">A living PM office that runs Claude Code in itself.</div></div></div>
+      <div><h1>KANBAN OFFICE <span id="appVer" style="font-family:Silkscreen,monospace;font-size:10px;color:var(--gold);vertical-align:middle;opacity:.85">v0.1.4</span></h1><div class="sub">A living PM office that runs Claude Code in itself.</div></div></div>
     <div class="controls">
       <span class="live gp" id="liveChip"><span class="led"></span><span id="liveTxt">OFFLINE</span></span>
       <button class="gbtn" id="ovBtn">OVERVIEW</button>
@@ -279,16 +279,18 @@ function openCreateProject(){openModal('NEW PROJECT','<div class="kv"><b>NAME</b
   document.getElementById('pjCreate').onclick=()=>{const n=document.getElementById('pjName').value.trim()||('Project '+(projects.length+1));const c=document.getElementById('pjColor').value;const ctx=document.getElementById('pjCtx').value;const dv=document.getElementById('pjDevs').value;
     const links=document.getElementById('pjLinks').value.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const i=l.indexOf('|');return i>=0?{label:l.slice(0,i).trim(),url:l.slice(i+1).trim()}:{label:l,url:l};});
     closeModal();createProject(n,c,ctx,links,dv);openPanel('board');};}
-function projContext(){const pd=projData[activeProj]||{};let s='';if(pd.context&&pd.context.trim())s+='\n\nProject context: '+pd.context.trim();if(pd.links&&pd.links.length)s+='\nRelated docs/boards: '+pd.links.map(l=>(l.label||l.url)+' — '+l.url).join(' ; ');return s;}
+function projContext(){const pd=projData[activeProj]||{};let s='';if(pd.context&&pd.context.trim())s+='\n\nProject context: '+pd.context.trim();if(pd.notionPulled&&pd.notionPulled.trim())s+='\n\nFrom linked Notion docs:\n'+pd.notionPulled.trim();if(pd.links&&pd.links.length)s+='\nRelated docs/boards: '+pd.links.map(l=>(l.label||l.url)+' — '+l.url).join(' ; ');return s;}
 function allProjectsContext(){if(!projects.length)return '';let s='\n\nOffice portfolio (all projects):';projects.forEach(p=>{const pd=projData[p.id]||{};s+='\n- '+p.name+(p.id===activeProj?' (current)':'')+(pd.context&&pd.context.trim()?': '+pd.context.trim().slice(0,200):'');});return s;}
 function openNotes(){if(!activeProj){openCreateProject();return;}cleanupSpecialistNotes();const pd=projData[activeProj]||(projData[activeProj]={});const notes=pd.notes||(pd.notes=[]);pd.noteNew=0;noteBadge();
   const list=notes.length?notes.map((n,i)=>({n,i})).reverse().map(o=>'<div class="notecard"><div class="noterow"><span class="notets">'+new Date(o.n.ts).toLocaleString()+'</span>'+(o.n.agent?'<button class="mini gold ncreate" data-i="'+o.i+'">＋ CREATE AGENT</button>':'')+'<button class="mini red nrm" data-i="'+o.i+'">✕</button></div><div class="desc" style="background:transparent;border:0;padding:0;margin:4px 0 0">'+mdLite(o.n.text)+'</div></div>').join(''):'<div class="why">No notes yet for this project.</div>';
   const sug=pd.lastSuggestion?('<div class="sect" style="margin-top:8px">ARCHITECT SUGGESTS</div><div class="desc">'+mdLite(pd.lastSuggestion)+'</div>'):'';
   openModal('DAY NOTES — '+projName(),
-    '<div class="kv"><b>ADD A NOTE</b> — saved to project memory</div><textarea id="ntInput" rows="2" placeholder="what happened today / what to remember / what to check…"></textarea><div class="row2"><button class="mini gold" id="ntAddNote">SAVE NOTE</button><button class="mini" id="ntAsk">ASK THE OFFICE ▸</button> <span id="ntStatus" style="font-size:13px;color:var(--ink-soft)"></span></div>'+sug+
+    '<div class="kv"><b>ADD A NOTE</b> — saved to project memory</div><textarea id="ntInput" rows="2" placeholder="what happened today / what to remember / what to check…"></textarea><div class="row2"><button class="mini gold" id="ntAddNote">SAVE NOTE</button><button class="mini" id="ntAsk">ASK THE OFFICE ▸</button><button class="mini" id="ntPush">📤 PUSH TO NOTION</button><button class="mini" id="ntSync">🔄 SYNC FROM NOTION</button> <span id="ntStatus" style="font-size:13px;color:var(--ink-soft)"></span></div>'+sug+
     '<div class="sect" style="margin-top:8px">NOTES ('+notes.length+')</div><div class="hist">'+list+'</div><div class="why" style="margin-top:6px">Edit project context &amp; reference links in PROJECTS → EDIT.</div>');
   document.getElementById('ntAddNote').onclick=()=>{const t=document.getElementById('ntInput').value.trim();if(!t)return;notes.push({ts:Date.now(),text:t});persistProjects();if(ELECTRON&&window.munder.appendAgentMemory)window.munder.appendAgentMemory({agentId:'project-'+activeProj,entry:{ts:Date.now(),text:'note: '+t}});openNotes();};
   document.getElementById('ntAsk').onclick=()=>{askSuggestions();const s=document.getElementById('ntStatus');if(s)s.textContent='Asking the Architect… see the terminal.';};
+  {const pb=document.getElementById('ntPush');if(pb)pb.onclick=()=>{pushNotesToNotion();const s=document.getElementById('ntStatus');if(s)s.textContent=notionTarget()?'Pushing notes + plan to Notion… see the terminal.':'';};}
+  {const sb=document.getElementById('ntSync');if(sb)sb.onclick=()=>{syncFromNotion();const s=document.getElementById('ntStatus');if(s)s.textContent=notionLinks().length?'Reading your Notion links… see the terminal.':'';};}
   mbody.querySelectorAll('.ncreate').forEach(b=>b.onclick=()=>{const n=notes[+b.getAttribute('data-i')];if(n&&n.agent){closeModal();openCreateAgent(n.agent);}});
   mbody.querySelectorAll('.nrm').forEach(b=>b.onclick=()=>{notes.splice(+b.getAttribute('data-i'),1);persistProjects();openNotes();});}
 function askSuggestions(){const pd=projData[activeProj]||{};const notes=(pd.notes||[]).map(n=>'- '+n.text).join('\n')||'(none yet)';const sum=summaryText();
@@ -297,30 +299,85 @@ function askSuggestions(){const pd=projData[activeProj]||{};const notes=(pd.note
   else termLine('Suggestions run in the desktop app (Claude on your account).','dim');}
 /* ---- team roundtable: each agent answers, the Manager synthesizes a note ---- */
 let roundtable=null;
-function openRoundtable(){if(!activeProj){openCreateProject();return;}
-  openModal('TEAM ROUNDTABLE — '+projName(),'<div class="kv"><b>ASK THE TEAM</b> <span class="why" style="margin:0">each agent answers from their role; the Manager reconciles &amp; polishes it into one note</span></div><textarea id="rtQ" rows="3" placeholder="e.g. What should we prioritise next? How should we approach the onboarding flow?"></textarea><div class="row2"><button class="mini gold" id="rtGo">ASK THE TEAM ▸</button> <span id="rtStatus" style="font-size:13px;color:var(--ink-soft)">'+(roundtable?'a roundtable is already running…':'')+'</span></div>');
-  const g=document.getElementById('rtGo');if(g)g.onclick=()=>{const q=document.getElementById('rtQ').value.trim();if(!q)return;startRoundtable(q);closeModal();};}
+function openRoundtable(){if(!activeProj){openCreateProject();return;}openPanel('roundtable');}
 function startRoundtable(question){if(!ELECTRON){termLine('Roundtable runs in the desktop app.','dim');return;}
   if(roundtable){toast('A roundtable is already running','err');return;}
   const panel=roster.filter(a=>a.id!=='client'&&a.id!=='architect');
   if(!panel.length){toast('Add some specialists to the team first','err');return;}
-  roundtable={question,projId:activeProj,pending:{},answers:{},phase:'gather',synthBuf:''};
+  roundtable={question,projId:activeProj,pending:{},answers:{},phase:'gather',synthBuf:'',turn:0,nextTurn:0};
   panel.forEach(a=>{roundtable.pending[a.id]=true;busyUntil[a.id]=performance.now()-t0+600000;pushHist(a.id,'roundtable: '+question.slice(0,40));
     const prompt='Team roundtable for project "'+projName()+'".'+projContext()+allProjectsContext()+'\n\nThe Manager asks the team:\n"'+question+'"\n\nAs '+(a.name||a.id)+' ('+(a.role||NICK[a.id]||'')+'), give YOUR opinion from your specialty — 3–6 concise bullets with concrete, specific points, plus any risks or dependencies you see. No preamble.';
     window.munder.runAgent({agentId:a.id,name:a.name,role:a.role,model:a.model,rules:a.rules,dirs:a.folders||[],prompt}).then(r=>{if(!r||!r.ok)rtDone(a.id);}).catch(()=>rtDone(a.id));});
-  termLine('[roundtable] asked '+panel.length+' agents: '+question,'agent');toast('Roundtable started — '+panel.length+' agents answering','ok');}
+  termLine('[roundtable] asked '+panel.length+' agents: '+question,'agent');toast('Roundtable started — the team is gathering','ok');
+  if(currentPanel==='roundtable')renderTab();else openPanel('roundtable');}
 function rtDone(id){if(!roundtable||!roundtable.pending[id])return;delete roundtable.pending[id];busyUntil[id]=performance.now()-t0;
+  if(currentPanel==='roundtable')renderTab();
   if(roundtable.phase==='gather'&&Object.keys(roundtable.pending).length===0)startRtSynthesis();}
-function startRtSynthesis(){const rt=roundtable;if(!rt)return;rt.phase='synth';
+function startRtSynthesis(){const rt=roundtable;if(!rt)return;rt.phase='synth';rt.nextTurn=0;
   let op='';Object.keys(rt.answers).forEach(id=>{const a=roster.find(x=>x.id===id)||{};op+='\n\n### '+(a.name||id)+' ('+(a.role||NICK[id]||'')+')\n'+(rt.answers[id]||'(no answer)');});
   busyUntil['architect']=performance.now()-t0+600000;
   const prompt='You are the Manager. The team held a roundtable on:\n"'+rt.question+'"'+projContext()+allProjectsContext()+'\n\nIndividual opinions:'+op+'\n\nReconcile and POLISH these views into ONE note — where they agree, where they correct/refine each other — and decide. Output EXACTLY this markdown:\n## Summary\n(one short paragraph: the gist + the decision)\n## Discussion\n(concise bullets: key points, who raised what, how they refine each other)\n## Recommendation\n(concrete next steps / what to plan). Refer to teammates by NAME, never raw ids or dept codes. No preamble.'+teamConstraint();
   window.munder.runPrompt({prompt,model:architectModel()}).then(r=>{if(!r||!r.ok)rtSave();}).catch(()=>rtSave());
-  termLine('[roundtable] Manager synthesizing…','agent');}
+  termLine('[roundtable] Manager synthesizing…','agent');if(currentPanel==='roundtable')renderTab();}
 function rtSave(){const rt=roundtable;roundtable=null;if(!rt)return;busyUntil['architect']=performance.now()-t0;
   const body=(rt.synthBuf||'').trim()||('## Summary\nThe team weighed in on: '+rt.question+'\n\n## Discussion'+Object.keys(rt.answers).map(id=>'\n\n### '+((roster.find(a=>a.id===id)||{}).name||id)+'\n'+rt.answers[id]).join(''));
   addProjectNote(rt.projId,'🗣️ Roundtable — '+rt.question+'\n\n'+body,true);
-  notify('Roundtable ready','The team discussion is saved to Notes.','ok','architect');}
+  const pd=projData[rt.projId]||(projData[rt.projId]={});pd.lastRoundtable={question:rt.question,answers:rt.answers,synth:(rt.synthBuf||'').trim()||body,ts:Date.now()};persistProjects();
+  if(currentPanel==='roundtable')renderTab();
+  notify('Roundtable ready','The team discussion is saved to Notes — and stays in the Roundtable panel.','ok','architect');}
+/* ---- roundtable read-out: live panel + on-floor talking snippets ---- */
+function rtView(){return (roundtable&&roundtable.projId===activeProj)?roundtable:null;}
+function rtClean(s){return (s||'').replace(/[*_`>#]/g,'').replace(/^[\s\-•·]+/,'').replace(/\s+/g,' ').trim();}
+function rtSnippet(buf){const ls=(buf||'').split('\n').map(rtClean).filter(l=>l.length>3);return ls.length?ls[ls.length-1].slice(0,48):'';}   // last live line — "what they're saying right now"
+function rtKeyPoint(buf){const ls=(buf||'').split('\n').map(rtClean).filter(l=>l.length>3);return ls.length?ls[0].slice(0,48):'';}                  // first point — the settled takeaway
+function rtPhaseLabel(rt){if(!rt)return '';if(rt.phase==='synth')return 'Manager is synthesizing the note…';const total=roster.filter(a=>a.id!=='client'&&a.id!=='architect').length;const done=total-Object.keys(rt.pending||{}).length;return 'Gathering answers — '+done+'/'+total+' in.';}
+function renderRoundtable(){const pd=projData[activeProj]||(projData[activeProj]={});const live=rtView(),saved=pd.lastRoundtable||null,running=!!live;
+  const panel=roster.filter(a=>a.id!=='client'&&a.id!=='architect');
+  let h='<div class="kv"><b>ASK THE TEAM</b> <span class="why" style="margin:0">each agent answers from their role; the Manager reconciles &amp; polishes it into one note</span></div>'
+    +'<textarea id="rtQ" rows="2" placeholder="e.g. What should we prioritise next? How should we approach the onboarding flow?"'+(running?' disabled':'')+'></textarea>'
+    +'<div class="row2"><button class="mini gold" id="rtGo"'+(running?' disabled':'')+'>ASK THE TEAM ▸</button> <span id="rtStatus" style="font-size:13px;color:var(--ink-soft)">'+(running?rtPhaseLabel(live):(saved?'Showing the last roundtable below.':(panel.length?'':'Add some specialists to the team first.')))+'</span></div>';
+  const data=live||saved;
+  if(data){h+='<div class="sect" style="margin-top:10px">QUESTION</div><div class="why" style="font-size:14px;color:var(--ink)">'+esc(data.question||'')+'</div>';
+    if(!running&&saved)h+='<div class="row2" style="margin-top:6px"><button class="mini" id="rtPush">📤 PUSH TO NOTION</button> <span class="why" style="margin:0">'+(notionTarget()?'→ child page under your linked Notion doc':'add a Notion link in PROJECTS → EDIT to enable')+'</span></div>';
+    const synth=live?(live.synthBuf||''):(saved.synth||'');const synthNote=running?(live.phase==='synth'?'· Manager is writing…':'· waiting for everyone to answer…'):'';
+    h+='<div class="sect" style="margin-top:10px">🧩 SYNTHESIS '+(synthNote?'<span class="why" style="margin:0">'+synthNote+'</span>':'')+'</div>'
+      +'<div class="desc" id="rt-synth">'+(synth.trim()?mdLite(synth):'<span class="why">(pending — appears once the team has weighed in)</span>')+'</div>';
+    h+='<div class="sect" style="margin-top:10px">WHO SAID WHAT</div>';
+    const ids=live?panel.map(a=>a.id):Object.keys(saved.answers||{});
+    h+=ids.map(id=>{const a=roster.find(x=>x.id===id)||{};const ans=live?(live.answers[id]||''):((saved.answers||{})[id]||'');
+      const dot=live&&live.pending&&live.pending[id]?' <span class="why" style="margin:0">· answering…</span>':'';
+      return '<div class="notecard"><div class="noterow"><span class="kc-owner" style="background:'+ownerColor(id)+'">'+esc(a.name||ownerName(id))+'</span>'+dot+'</div><div class="desc" id="rta-'+id+'" style="background:transparent;border:0;padding:0;margin:4px 0 0">'+(ans.trim()?mdLite(ans):'<span class="why">(waiting…)</span>')+'</div></div>';}).join('');}
+  mbody.innerHTML=h;
+  const g=document.getElementById('rtGo');if(g&&!running)g.onclick=()=>{const q=(document.getElementById('rtQ').value||'').trim();if(!q)return;startRoundtable(q);};
+  const pb=document.getElementById('rtPush');if(pb)pb.onclick=pushRoundtableToNotion;}
+function rtLiveAppend(ev){const rt=rtView();if(!rt)return;let el=null;
+  if(rt.phase==='gather'&&ev.who&&rt.pending[ev.who])el=document.getElementById('rta-'+ev.who);
+  else if(rt.phase==='synth'&&!ev.who)el=document.getElementById('rt-synth');
+  if(!el)return;if(el.dataset.raw!=='1'){el.textContent='';el.dataset.raw='1';el.style.whiteSpace='pre-wrap';}el.textContent+=ev.text+'\n';el.scrollTop=el.scrollHeight;}
+/* ---- Notion sync: the office agents already carry the user's Notion MCP tools (spawned on ~/.claude with bypassPermissions), so a prompt to the Architect can read/write Notion directly ---- */
+let notionMode=null;
+function notionLinks(){const pd=projData[activeProj]||{};return (pd.links||[]).filter(x=>/notion\.(so|site)/i.test(x.url||''));}
+function notionTarget(){const l=notionLinks();return l.length?l[0].url:null;}
+function notionNeedsDest(){toast('Add your Notion page/DB link in PROJECTS → EDIT first','err');termLine('[notion] No destination set — add a Notion page or database URL under PROJECTS → EDIT (links), then push again.','dim');}
+function runNotion(kind,prompt){if(!ELECTRON){termLine('Notion sync runs in the desktop app.','dim');return;}
+  if(notionMode){toast('A Notion sync is already running','err');return;}
+  notionMode={kind,projId:activeProj,buf:''};planning=true;runProj=activeProj;termState('running');
+  termLine('[notion] '+kind+' — asking the Architect to use its Notion tools…','agent');toast('Notion '+kind+' started — see the terminal','ok');
+  window.munder.runPrompt({prompt,model:architectModel()}).then(r=>{if(!r||!r.ok){notionMode=null;planning=false;termState('error');}}).catch(()=>{notionMode=null;planning=false;termState('error');});}
+function pushRoundtableToNotion(){const pd=projData[activeProj]||{};const rt=pd.lastRoundtable;if(!rt){toast('No finished roundtable to push yet','err');return;}
+  const dest=notionTarget();if(!dest){notionNeedsDest();return;}
+  const md='## Synthesis\n'+(rt.synth||'')+'\n\n## Who said what\n'+Object.keys(rt.answers||{}).map(id=>'### '+ownerName(id)+'\n'+(rt.answers[id]||'')).join('\n\n');
+  const prompt='Using your Notion MCP tools, create a NEW Notion page as a child of this parent (page or database): '+dest+'\nProject: "'+projName()+'". Page title: "Roundtable — '+(rt.question||'').slice(0,80)+'". Write the following as the page body, converting the markdown to Notion blocks faithfully (headings, bullet lists, paragraphs):\n\n# 🗣️ Roundtable — '+(rt.question||'')+'\n\n'+md+'\n\nAfter creating it, reply with only the new page URL. Do NOT write any local files.';
+  runNotion('push',prompt);}
+function pushNotesToNotion(){const pd=projData[activeProj]||{};const dest=notionTarget();if(!dest){notionNeedsDest();return;}
+  const notes=(pd.notes||[]).map(n=>'- ['+new Date(n.ts).toLocaleString()+'] '+(n.text||'').replace(/\n+/g,' ')).join('\n')||'(none yet)';
+  const board=summaryText();
+  const plan=(state.tasks||[]).slice().sort((a,b)=>(a.day||0)-(b.day||0)).map(t=>'- Day '+(t.day||'?')+' · '+(t.priority||'')+' · '+(t.title||'')+' ('+ownerName(t.owner)+', '+(t.estimateHours||'?')+'h)').join('\n')||'(no tasks)';
+  const prompt='Using your Notion MCP tools, create OR update a Notion page titled "'+projName()+' — status" as a child of this parent: '+dest+'. If a page with that exact title already exists under the parent, update it in place; otherwise create it. Write this as the body (faithful markdown→Notion blocks):\n\n# 📋 '+projName()+' — status\n\n## Board\n'+board+'\n\n## Plan\n'+plan+'\n\n## Notes\n'+notes+'\n\nReply with only the page URL. Do NOT write any local files.';
+  runNotion('push',prompt);}
+function syncFromNotion(){const links=notionLinks();if(!links.length){toast('Add a Notion link in PROJECTS → EDIT first','err');return;}
+  const prompt='Using your Notion MCP tools, OPEN and READ these Notion pages (they are behind auth — only your Notion tools can see them) and summarise their current content so the planning team can use them as context:\n'+links.map(l=>'- '+(l.label||l.url)+': '+l.url).join('\n')+'\n\nFor each page, output a short titled section with the key facts, decisions, requirements and any dates. Tight markdown. Do NOT write any local files.';
+  runNotion('sync',prompt);}
 function openProjects(){const rows=projects.map(p=>{const ctx=(projData[p.id]&&projData[p.id].context)?'<div class="why" style="margin:0 0 0 24px;font-size:12px">'+esc((projData[p.id].context||'').slice(0,90))+((projData[p.id].context||'').length>90?'…':'')+'</div>':'';
     return '<div data-id="'+p.id+'"><div class="row2" style="gap:6px;align-items:center"><span style="width:16px;height:16px;border-radius:4px;background:'+p.color+';border:2px solid #0008;display:inline-block"></span><b style="flex:1">'+esc(p.name)+(p.id===activeProj?' <span class="pill">ACTIVE</span>':'')+'</b><button class="mini pjedit">✎ EDIT</button><button class="mini pjsw">OPEN</button>'+(projects.length>1?'<button class="mini red pjdel">✕</button>':'')+'</div>'+ctx+'</div>';}).join('');
   openModal('PROJECTS — '+projects.length,rows+'<div class="row2" style="margin-top:8px"><button class="mini gold" id="pjNew">+ NEW PROJECT</button></div><div class="why">Each project has its own tasks &amp; context (edit anytime). The team is shared. Projects also appear in the break room.</div>');
@@ -629,13 +686,17 @@ const CHILL=[{x:178,y:70},{x:192,y:70},{x:288,y:70},{x:250,y:90},{x:332,y:72},{x
 const BREAKCHAT=["Coffee time","Break!","Foosball?","Slow day…","brb","Refill.","Chill mode","No tasks rn"];
 const ACTIVITIES=[{x:312,y:92,act:'☕ getting coffee'},{x:198,y:100,act:'playing foosball'},{x:235,y:60,act:'checking the board'},{x:392,y:94,act:'in the washroom'},{x:100,y:232,act:'relaxing in the lounge'},{x:30,y:202,act:'taking a break'},{x:235,y:127,act:'chatting at the cooler'}];
 function think(a,time){
+  if(roundtable&&a.id!=='client'){   // a roundtable is live → everyone gathers at the conference table; the Manager faces the board
+    const seat=a.id==='architect'?{x:BOARD_FRONT.x,y:BOARD_FRONT.y}:seatFor(a.id);
+    if(a.state!=='roundtable'){a.state='roundtable';routeTo(a,seat.x,seat.y);a.bubble=null;}
+    return;}
   const runWork=activeAgent===a.id||(busyUntil[a.id]||0)>time, cardWork=(busyWork[a.id]||0)>time;  // working = an actual run is active (set when a WIP/Review run starts)
   if(runWork||cardWork){ if(a.state!=='working'){a.state='working';const d=a.home||{fx:200,fy:CORRY};routeTo(a,d.fx,d.fy);a.bubble=null;} return; }   // working/planning -> at their own workstation
   if(standupUntil>time){ const begun=standupUntil-22000, delay=hashStr(a.id)%1500;   // stagger departures so they amble over ~1.5s instead of all bolting at once
     if(a.state!=='standup'&&time>begun+delay){a.state='standup';if(a.id==='architect')routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);else if(a.id!=='client'){const s=seatFor(a.id);routeTo(a,s.x,s.y);}a.bubble=pick(STANDUP);a.bubbleUntil=time+3200;} return; }   // standup gathers the team in the conference room
   if((busyBoard[a.id]||0)>time){ if(a.state!=='board'){a.state='board';routeTo(a,BOARD_FRONT.x,BOARD_FRONT.y);a.bubble=pick(["Updating board","Moving a card","Status change"]);a.bubbleUntil=time+2200;} return; }
   if(planning){ if(a.state!=='working'){a.state='working';const d=a.home||{fx:200,fy:CORRY};routeTo(a,d.fx,d.fy);} if(!a.moving&&Math.random()<0.005){a.bubble=a.id==='architect'?'Planning…':pick(STANDUP);a.bubbleUntil=time+2500;} return; }  // office is planning -> everyone stays still at their workstation
-  if(a.state==='working'||a.state==='board'||a.state==='standup'){a.state='idle';a.nextIdle=0;}
+  if(a.state==='working'||a.state==='board'||a.state==='standup'||a.state==='roundtable'){a.state='idle';a.nextIdle=0;}
   // arrived at an activity spot -> pause there a few seconds before moving on (occasional witty remark)
   if(a.state==='goActivity'&&!a.moving){a.state='activity';a.nextIdle=time+a.actDwell;if(Math.random()<0.3){a.bubble=Math.random()<0.5?a.activity:quip(a);a.bubbleUntil=time+Math.min(a.actDwell,4000);}return;}
   if(a.moving||time<(a.nextIdle||0))return;
@@ -961,7 +1022,8 @@ function drawPerson(a,time){if(!a||!isFinite(a.x)||!isFinite(a.y))return;const i
   const _kind=agentBusyKind(id);   // same source as the roster status, so the tag never disagrees with it
   if(_kind!=='idle'){let lbl,tc='#b9332e';const sc=stageCaps[id];
     if(_kind==='plan'){lbl='PLANNING';tc='#46d6c0';}
-    else if(roundtable&&roundtable.pending[id]){lbl='💬 Roundtable';tc='#8a5cc0';}
+    else if(roundtable&&roundtable.phase==='synth'&&id==='architect'){lbl='✍ Synthesizing';tc='#8a5cc0';}
+    else if(roundtable&&roundtable.pending[id]){lbl='💬 Answering';tc='#8a5cc0';}
     else if(sc){const tk=(state.tasks||[]).find(x=>x.id===sc.taskId)||{};if(sc.kind==='review'){lbl='⊙ Review: '+(tk.title||sc.taskId||'');tc='#4aa3ff';}else{lbl='▸ '+(tk.title||sc.taskId||'task');}}
     else{const wt=wipTaskOf(id);lbl=wt?('▸ '+(wt.title||'task')):(busyLabel[id]||"WORK");}
     drawTag(lbl,x,hy-9,tc);}
@@ -1021,9 +1083,17 @@ function drawScene(now){requestAnimationFrame(drawScene);   // reschedule first 
   P(372,20,1,42,"#5a6a72");P(410,20,1,42,"#5a6a72");toiletIcon(378,28);toiletIcon(416,28);sink(363,32);sink(363,52);P(434,22,14,7,"#cdd9de");P(434,22,14,1,"#eef6f8");
   drawLounge();
   // standup scheduler — when there are tasks, the Manager gathers the team; the meeting begins once everyone has arrived
-  if((state.tasks||[]).length>0&&!planning&&time>nextStandup&&standupUntil<time){nextStandup=time+3600000;doStandup();}   // hourly standup
+  if((state.tasks||[]).length>0&&!planning&&!roundtable&&time>nextStandup&&standupUntil<time){nextStandup=time+3600000;doStandup();}   // hourly standup (paused during a roundtable)
   if(standupPhase==='gather'&&standupUntil>time&&teamArrived()){standupPhase='meeting';try{runStandupContent();}catch(e){}}
   if(standupUntil<time)standupPhase=null;
+  // roundtable: rotate the speaker so the gathered team reads as turn-taking — the live snippet of each answer bubbles up over the table
+  if(roundtable&&time>(roundtable.nextTurn||0)){const seated=id=>{const e=A[id];return e&&!e.moving&&e.state==='roundtable';};
+    if(roundtable.phase==='synth'){if(seated('architect')){const e=A['architect'];e.bubble=rtSnippet(roundtable.synthBuf)||pick(['Let me sum up…','Reconciling…','So, in short…']);e.bubbleUntil=time+3400;}roundtable.nextTurn=time+2600;}
+    else{const pool=roster.filter(a=>a.id!=='client'&&a.id!=='architect'&&seated(a.id));
+      if(pool.length){roundtable.turn=(roundtable.turn||0)+1;
+        if(seated('architect')&&roundtable.turn%4===0){const e=A['architect'];e.bubble=pick(['Go on.','Good point.','Anyone else?','Noted.','And the risks?']);e.bubbleUntil=time+2400;}
+        else{const sp=pool[roundtable.turn%pool.length],e=A[sp.id],ans=roundtable.answers[sp.id];e.bubble=roundtable.pending[sp.id]?(rtSnippet(ans)||pick(['My take…','From my side…','One thing…'])):(rtKeyPoint(ans)||'Done.');e.bubbleUntil=time+3200;}
+        roundtable.nextTurn=time+2800;}}}
   // advance agents
   ensureAgents();buildObstacles();
   const ents=roster.map(a=>A[a.id]).filter(Boolean);
@@ -1094,7 +1164,7 @@ function pushHist(id,text){(agentHist[id]=agentHist[id]||[]).push({ts:Date.now()
 /* ---- tabs / HUD ---- */
 let currentPanel=null;
 function openPanel(name){currentPanel=name;const m=document.querySelector('.modal');if(m)m.classList.toggle('wide',name==='board'||name==='agents');overlay.classList.remove('hidden');renderTab();}
-function renderTab(){if(!currentPanel)return;if(currentPanel==='overview'){mtitleEl.textContent='OVERVIEW';renderOverview();}else if(currentPanel==='agents'){mtitleEl.textContent='THE TEAM';renderAgents();}else if(currentPanel==='board'){mtitleEl.textContent='KANBAN BOARD';renderBoard();}else if(currentPanel==='terminal'){renderTerminal();}}
+function renderTab(){if(!currentPanel)return;if(currentPanel==='overview'){mtitleEl.textContent='OVERVIEW';renderOverview();}else if(currentPanel==='agents'){mtitleEl.textContent='THE TEAM';renderAgents();}else if(currentPanel==='board'){mtitleEl.textContent='KANBAN BOARD';renderBoard();}else if(currentPanel==='roundtable'){mtitleEl.textContent='TEAM ROUNDTABLE — '+projName();renderRoundtable();}else if(currentPanel==='terminal'){renderTerminal();}}
 function countByCol(){const c={backlog:0,inprogress:0,review:0,done:0};(state.tasks||[]).forEach(t=>c[colOf(t.status)]++);return c;}
 function renderOverview(){const r=state.request||{},cc=countByCol(),pc={P0:0,P1:0,P2:0,P3:0};(state.tasks||[]).forEach(t=>{if(pc[t.priority]!=null)pc[t.priority]++;});
   const g=ensureGame()||{score:0,streak:0,combo:0,comboUntil:0,doneIds:[]};const comboNow=(performance.now()-t0<g.comboUntil)?g.combo:1;
@@ -1540,7 +1610,7 @@ if(ELECTRON){setLive(true,"CLAUDE LIVE");termLine('Kanban Office — Claude Code
     try{migrateAgentIds();}catch(e){}try{cleanupSpecialistNotes();}catch(e){}
     if(!projects.length)firstRunWelcome();});
   if(window.munder.getLinks)window.munder.getLinks().then(l=>{if(l&&l.refs)links=l;});
-  if(window.munder.getVersion)window.munder.getVersion().then(v=>{appVersion=v;});
+  if(window.munder.getVersion)window.munder.getVersion().then(v=>{appVersion=v;const e=document.getElementById('appVer');if(e&&v)e.textContent='v'+v;});
   if(window.munder.checkUpdate)setTimeout(()=>{window.munder.checkUpdate().then(u=>{if(u&&u.ok&&u.newer)showUpdatePrompt(u);}).catch(()=>{});},4000);
   window.munder.onState(s=>{if(!acceptState)return;const tgt=runProj||activeProj;if(!tgt)return;   // route the plan result to the project the run was launched for
     if(tgt===activeProj){applyState(s);if(projData[tgt])projData[tgt].state=state;}
@@ -1549,8 +1619,8 @@ if(ELECTRON){setLive(true,"CLAUDE LIVE");termLine('Kanban Office — Claude Code
   window.munder.onEvent(ev=>{
     if(ev.kind==='agent-start'){activeAgent=ev.agent;busyUntil[ev.agent]=performance.now()-t0+9000;pushHist(ev.agent,'started working');}
     if(ev.kind==='architect-busy')busyUntil['architect']=performance.now()-t0+5000;
-    if(ev.kind==='term'){termLine(ev.text,ev.cls,ev.who);if(suggestMode&&!ev.who&&!ev.cls&&!/^[$\[●■➜]/.test(ev.text))suggestBuf+=ev.text+'\n';const _sc=ev.who&&stageCaps[ev.who];if(_sc&&!ev.cls&&ev.text)_sc.buf+=ev.text+'\n';
-      if(roundtable&&!ev.cls&&ev.text){if(roundtable.phase==='gather'&&ev.who&&roundtable.pending[ev.who])roundtable.answers[ev.who]=(roundtable.answers[ev.who]||'')+ev.text+'\n';else if(roundtable.phase==='synth'&&!ev.who&&!/^[$\[●■➜⚙↳➤]/.test(ev.text))roundtable.synthBuf+=ev.text+'\n';}
+    if(ev.kind==='term'){termLine(ev.text,ev.cls,ev.who);if(suggestMode&&!ev.who&&!ev.cls&&!/^[$\[●■➜]/.test(ev.text))suggestBuf+=ev.text+'\n';if(notionMode&&!ev.who&&!ev.cls&&!/^[$\[●■➜⚙↳➤]/.test(ev.text))notionMode.buf+=ev.text+'\n';const _sc=ev.who&&stageCaps[ev.who];if(_sc&&!ev.cls&&ev.text)_sc.buf+=ev.text+'\n';
+      if(roundtable&&!ev.cls&&ev.text){if(roundtable.phase==='gather'&&ev.who&&roundtable.pending[ev.who])roundtable.answers[ev.who]=(roundtable.answers[ev.who]||'')+ev.text+'\n';else if(roundtable.phase==='synth'&&!ev.who&&!/^[$\[●■➜⚙↳➤]/.test(ev.text))roundtable.synthBuf+=ev.text+'\n';if(currentPanel==='roundtable')rtLiveAppend(ev);}
       if(ev.text&&/^\s*SUGGEST AGENT:/i.test(ev.text)){const tgt=runProj||activeProj;const line=ev.text.trim().replace(/^SUGGEST AGENT:\s*/i,'');const p=line.split('|').map(s=>s.trim());
         const ag={name:p[0]||'New Specialist',role:p[1]||'specialist',model:(/(haiku|sonnet|opus)/i.exec(p[2]||'')||[])[1]||'sonnet',rules:p[3]||'',description:(p[4]&&p[4].length>8)?p[4]:('A '+(p[1]||'specialist')+' on the planning team for "'+projName()+'". They own the '+(p[1]||'specialty')+' side of features — turning the Manager\'s high-level tasks into concrete, specialty-specific plans'+(p[3]?': '+p[3]:'.')+' They report detailed work items to the Manager and never write product files.')};
         if(!specialistCovered(tgt,ag.role)){addProjectNote(tgt,'🧩 Add specialist: '+ag.name+' — '+ag.role+' · '+ag.model+(ag.rules?(' · '+ag.rules):''),true,ag);notify('New specialist suggested',ag.name+' ('+ag.role+')','ok');}}}
@@ -1561,6 +1631,10 @@ if(ELECTRON){setLive(true,"CLAUDE LIVE");termLine('Kanban Office — Claude Code
       if(roundtable&&ev.who&&roundtable.pending&&roundtable.pending[ev.who]){busyUntil[ev.who]=performance.now()-t0;rtDone(ev.who);termState('idle');return;}
       if(ev.who){busyUntil[ev.who]=performance.now()-t0;const sc=stageCaps[ev.who];if(sc){delete stageCaps[ev.who];if(ev.ok)applyStageResult(sc);else{toast('Run failed for '+(sc.taskId||'').toUpperCase()+' — will retry','err');clearTaskGuards(sc.projId,sc.taskId);}}else{pushHist(ev.who,'finished ('+(ev.ok?'ok':'error')+')');const an=(roster.find(a=>a.id===ev.who)||{}).name||ev.who;toast(an+(ev.ok?' finished its task':' hit an error'),ev.ok?'ok':'err');}}
       else{planning=false;activeAgent=null;runProj=null;
+        if(notionMode){const nm=notionMode;notionMode=null;
+          if(nm.kind==='sync'){const pd=projData[nm.projId];if(pd){pd.notionPulled=((nm.buf||'').trim()||'(nothing returned)').slice(0,4000);addProjectNote(nm.projId,'🔄 Synced from Notion:\n\n'+pd.notionPulled,true);persistProjects();}termLine('[notion] sync saved to project context.','ok');notify('Notion synced','Linked Notion docs pulled into project context.','ok');}
+          else{termLine('[notion] push complete.',ev.ok?'ok':'err');notify(ev.ok?'Pushed to Notion':'Notion push failed',ev.ok?'The page was written to your Notion workspace.':'Check the terminal for details.',ev.ok?'ok':'err');}
+          if(currentPanel)renderTab();return;}
         if(suggestMode){suggestMode=false;if(projData[activeProj]){projData[activeProj].lastSuggestion=(suggestBuf.trim()||'(no suggestions returned)').slice(0,1400);persistProjects();}termLine('[suggestions] saved to project memory.','ok');if(currentPanel==='overview')renderTab();notify('Architect suggestions ready','Saved to project memory — see Overview.','ok');}
         else if(ev.ok){postSummary('done');notify('Planning complete','The team finished planning — board & Gantt updated.','ok');}
         else notify('Planning failed','Something went wrong — check the terminal.','err');}
