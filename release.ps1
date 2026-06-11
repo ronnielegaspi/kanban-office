@@ -1,5 +1,5 @@
 <#
-  release.ps1 — cut a new Kanban Office release.
+  release.ps1 - cut a new Kanban Office release.
 
   Does the whole pipeline:
     1. bump package.json version
@@ -14,6 +14,9 @@
     powershell -ExecutionPolicy Bypass -File .\release.ps1 -Version 0.1.2
     powershell -ExecutionPolicy Bypass -File .\release.ps1 -Version 0.1.2 -Notes "Fixed scrolling on Surface Pro."
     powershell -ExecutionPolicy Bypass -File .\release.ps1 -Version 0.1.2 -NoRelease   # build only, no push/release
+
+  NOTE: keep this file ASCII-only. Windows PowerShell reads .ps1 without a BOM as the
+  ANSI codepage, so non-ASCII chars (em-dashes, curly quotes) get mojibaked and break parsing.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Version,
@@ -29,8 +32,8 @@ $gh   = if (Get-Command gh -ErrorAction SilentlyContinue) { 'gh' } else { 'C:\Pr
 $tag  = "v$Version"
 function Step($m) { Write-Host "`n==> $m" -ForegroundColor Cyan }
 
-if (-not (Test-Path $arm) -or -not (Test-Path $x64)) { throw "dist build folders missing — package the app first (npm run package / package:x64)." }
-if (-not (Test-Path $rc)) { throw "rcedit not found — run: npm install --no-save rcedit" }
+if (-not (Test-Path $arm) -or -not (Test-Path $x64)) { throw "dist build folders missing - package the app first (npm run package / package:x64)." }
+if (-not (Test-Path $rc)) { throw "rcedit not found - run: npm install --no-save rcedit" }
 
 Step "1/7  Bump package.json -> $Version"
 $pkgPath = Join-Path $base 'package.json'
@@ -68,11 +71,13 @@ if (-not (Test-Path $setupArm)) { throw "arm64 installer not produced (iexpress 
 if (-not (Test-Path $setupX64)) { throw "x64 installer not produced (iexpress exit $($p2.ExitCode))" }
 Write-Host ("   arm64: {0:N1} MB   x64: {1:N1} MB" -f ((Get-Item $setupArm).Length/1MB), ((Get-Item $setupX64).Length/1MB))
 
-if ($NoRelease) { Step "Done (build only — skipped push & release)."; return }
+if ($NoRelease) { Step "Done (build only - skipped push and release)."; return }
 
 Step "6/7  Commit + push"
 git -C $base add package.json main.js preload.js office-floor.html icon.ico icon.png generate-icon.js
-git -C $base commit -m "Release $tag$(if($Notes){" — $Notes"})" | Out-Null
+$commitMsg = "Release $tag"
+if ($Notes) { $commitMsg = "$commitMsg - $Notes" }
+git -C $base commit -m $commitMsg | Out-Null
 git -C $base push origin main
 
 Step "7/7  Create GitHub release $tag"
