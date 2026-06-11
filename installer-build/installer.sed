@@ -20,11 +20,11 @@ PostInstallCmd=%PostInstallCmd%
 AdminQuialifiedName=%AdminQuialifiedName%
 SourceFiles=SourceFiles
 [Strings]
-InstallPrompt=Install Kanban Office to your user folder?
+InstallPrompt=Install Kanban Office (ARM64) to your user folder?
 DisplayLicense=
 FinishMessage=Kanban Office installed. A desktop shortcut was created.
-TargetName=C:\Users\ronni\Documents\dev\pm-floor\dist\KanbanOffice-Setup.exe
-FriendlyName=Kanban Office Setup
+TargetName=C:\Users\ronni\Documents\dev\pm-floor\dist\KanbanOffice-Setup-arm64.exe
+FriendlyName=Kanban Office Setup (ARM64)
 AppLaunched=cmd /c install.cmd
 PostInstallCmd=<None>
 AdminQuialifiedName=

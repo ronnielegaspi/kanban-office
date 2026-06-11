@@ -59,7 +59,7 @@ Compress-Archive -Path $arm -DestinationPath (Join-Path $base 'installer-build\a
 Compress-Archive -Path $x64 -DestinationPath (Join-Path $base 'installer-build-x64\app.zip') -Force
 
 Step "5/7  Build installers (IExpress, /N only)"
-$setupArm = Join-Path $base 'dist\KanbanOffice-Setup.exe'
+$setupArm = Join-Path $base 'dist\KanbanOffice-Setup-arm64.exe'
 $setupX64 = Join-Path $base 'dist\KanbanOffice-Setup-x64.exe'
 Remove-Item $setupArm,$setupX64 -ErrorAction SilentlyContinue
 $p1 = Start-Process iexpress -ArgumentList '/N',(Join-Path $base 'installer-build\installer.sed')     -Wait -PassThru -NoNewWindow
