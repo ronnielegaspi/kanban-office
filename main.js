@@ -25,6 +25,7 @@ const STATE_FILE = path.join(WORKSPACE, 'office-state.json');
 
 let win = null;
 let busy = false;
+const RUNS = new Map();   // who ('main' for the Architect/planning run, else agentId) -> spawned child, so a run can be cancelled
 
 function copyRecursive(src, dest) {
   const stat = fs.statSync(src);
@@ -154,12 +155,14 @@ function runClaude(promptText, label, opts) {
     let child;
     try { child = spawn('claude', args, { cwd: WORKSPACE, env: process.env, shell: true }); }
     catch (err) { termW(who, 'Could not launch Claude Code: ' + err.message, 'err'); finish(false); return resolve({ ok: false, error: err.message }); }
+    const runKey = who || 'main';
+    RUNS.set(runKey, child);
     child.stdin.write(promptText); child.stdin.end();
     let buf = '';
     child.stdout.on('data', (d) => { buf += d.toString(); let nl; while ((nl = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, nl); buf = buf.slice(nl + 1); if (line.trim()) handleStreamLine(line.trim(), who); } });
     child.stderr.on('data', (d) => { send({ kind: 'stderr', text: d.toString().slice(0, 600), who }); });
-    child.on('error', (err) => { termW(who, 'process error: ' + err.message, 'err'); finish(false); resolve({ ok: false, error: err.message }); });
-    child.on('close', (code) => { if (!who) { const s = readState(); if (s && win) win.webContents.send('state-update', s); } if (code !== 0) termW(who, '— process exited (code ' + code + ')', 'err'); finish(code === 0); resolve({ ok: code === 0, code }); });  // only planning runs write office-state.json; agent runs are read-only, don't clobber the board with the stale file
+    child.on('error', (err) => { if (RUNS.get(runKey) === child) RUNS.delete(runKey); termW(who, 'process error: ' + err.message, 'err'); finish(false); resolve({ ok: false, error: err.message }); });
+    child.on('close', (code) => { if (RUNS.get(runKey) === child) RUNS.delete(runKey); if (!who) { const s = readState(); if (s && win) win.webContents.send('state-update', s); } if (code !== 0) termW(who, '— process exited (code ' + code + ')', 'err'); finish(code === 0); resolve({ ok: code === 0, code }); });  // only planning runs write office-state.json; agent runs are read-only, don't clobber the board with the stale file
   });
 }
 
@@ -184,6 +187,25 @@ ipcMain.handle('run-prompt', async (_e, payload) => {
   const p = (payload && payload.prompt || '').trim();
   if (!p) return { ok: false, error: 'empty prompt' };
   return runClaude(p, p.slice(0, 60), { model: payload && payload.model });
+});
+
+// stop a run: kill the spawned claude process tree (shell:true means we must kill the whole tree, not just the cmd wrapper)
+ipcMain.handle('cancel-run', async (_e, payload) => {
+  const all = payload && payload.all;
+  let who = payload && payload.who;
+  if (who === 'architect' || who === null || who === undefined) who = 'main';
+  const killChild = (child) => {
+    if (!child) return false;
+    try {
+      if (process.platform === 'win32' && child.pid) spawn('taskkill', ['/PID', String(child.pid), '/T', '/F']);
+      else child.kill('SIGTERM');
+    } catch (e) { try { child.kill('SIGKILL'); } catch (_) {} }
+    return true;
+  };
+  let n = 0;
+  if (all) { for (const [key, child] of Array.from(RUNS.entries())) { if (killChild(child)) { RUNS.delete(key); n++; } } }
+  else { const child = RUNS.get(who); if (killChild(child)) { RUNS.delete(who); n++; } }
+  return { ok: true, killed: n };
 });
 
 ipcMain.handle('get-state', async () => readState());

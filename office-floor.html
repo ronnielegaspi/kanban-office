@@ -364,16 +364,24 @@ function runNotion(kind,prompt){if(!ELECTRON){termLine('Notion sync runs in the 
   notionMode={kind,projId:activeProj,buf:''};planning=true;runProj=activeProj;termState('running');
   termLine('[notion] '+kind+' — asking the Architect to use its Notion tools…','agent');toast('Notion '+kind+' started — see the terminal','ok');
   window.munder.runPrompt({prompt,model:architectModel()}).then(r=>{if(!r||!r.ok){notionMode=null;planning=false;termState('error');}}).catch(()=>{notionMode=null;planning=false;termState('error');});}
+function fmtDate(ts){return new Date(ts).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});}
+function notesByDateMd(notes){const g={},order=[];notes.forEach(n=>{const d=new Date(n.ts);const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');if(!g[key]){g[key]=[];order.push(key);}g[key].push(n);});
+  order.sort().reverse();   // newest day first
+  return order.map(key=>{const day=g[key].slice().sort((a,b)=>b.ts-a.ts);return '### '+fmtDate(day[0].ts)+'\n'+day.map(n=>{const tm=new Date(n.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const txt=(n.text||'').trim().replace(/\n{2,}/g,'\n').replace(/\n/g,' ');return '- **'+tm+'** — '+txt;}).join('\n');}).join('\n\n');}
+function planByDayMd(){const ts=(state.tasks||[]).slice();if(!ts.length)return '_No tasks planned yet._';
+  const g={},order=[];ts.forEach(t=>{const d=t.day||0;if(!g[d]){g[d]=[];order.push(d);}g[d].push(t);});order.sort((a,b)=>a-b);
+  return order.map(d=>{const head=d?('### Day '+d):'### Unscheduled';return head+'\n'+g[d].map(t=>'- **'+(t.priority||'')+'** '+(t.title||'untitled')+' — '+ownerName(t.owner)+' · '+(t.estimateHours||'?')+'h').join('\n');}).join('\n\n');}
+function notionBlockRules(){return '\n\nFORMATTING (critical — earlier pushes came out as an unreadable wall of text):\n- Build REAL Notion blocks, never one big paragraph: heading_1 for the page title, heading_2 for each "## " section, heading_3 for each "### " date / sub-section, a bulleted_list_item for every "- " line, and a divider block for each "---".\n- Use rich text: bold for the leading dates/labels/priorities, italic for the "_…_" meta lines.\n- One idea per list item; keep dates and content visually grouped exactly as structured below.\n- Render this markdown faithfully into that block structure:';}
 function pushRoundtableToNotion(){const pd=projData[activeProj]||{};const rt=pd.lastRoundtable;if(!rt){toast('No finished roundtable to push yet','err');return;}
   const dest=notionTarget();if(!dest){notionNeedsDest();return;}
-  const md='## Synthesis\n'+(rt.synth||'')+'\n\n## Who said what\n'+Object.keys(rt.answers||{}).map(id=>'### '+ownerName(id)+'\n'+(rt.answers[id]||'')).join('\n\n');
-  const prompt='Using your Notion MCP tools, create a NEW Notion page as a child of this parent (page or database): '+dest+'\nProject: "'+projName()+'". Page title: "Roundtable — '+(rt.question||'').slice(0,80)+'". Write the following as the page body, converting the markdown to Notion blocks faithfully (headings, bullet lists, paragraphs):\n\n# 🗣️ Roundtable — '+(rt.question||'')+'\n\n'+md+'\n\nAfter creating it, reply with only the new page URL. Do NOT write any local files.';
+  const who=Object.keys(rt.answers||{}).map(id=>'### '+ownerName(id)+'\n'+(rt.answers[id]||'').trim()).join('\n\n---\n\n');
+  const md='# 🗣️ Roundtable — '+(rt.question||'')+'\n\n_'+fmtDate(rt.ts||Date.now())+'_\n\n## 🧩 Synthesis\n'+(rt.synth||'').trim()+'\n\n---\n\n## 💬 Who said what\n'+who;
+  const prompt='Using your Notion MCP tools, create a NEW Notion page as a child of this parent (page or database): '+dest+'\nProject: "'+projName()+'". Page title: "Roundtable — '+(rt.question||'').slice(0,80)+'".'+notionBlockRules()+'\n\n'+md+'\n\nAfter creating it, reply with only the new page URL. Do NOT write any local files.';
   runNotion('push',prompt);}
 function pushNotesToNotion(){const pd=projData[activeProj]||{};const dest=notionTarget();if(!dest){notionNeedsDest();return;}
-  const notes=(pd.notes||[]).map(n=>'- ['+new Date(n.ts).toLocaleString()+'] '+(n.text||'').replace(/\n+/g,' ')).join('\n')||'(none yet)';
-  const board=summaryText();
-  const plan=(state.tasks||[]).slice().sort((a,b)=>(a.day||0)-(b.day||0)).map(t=>'- Day '+(t.day||'?')+' · '+(t.priority||'')+' · '+(t.title||'')+' ('+ownerName(t.owner)+', '+(t.estimateHours||'?')+'h)').join('\n')||'(no tasks)';
-  const prompt='Using your Notion MCP tools, create OR update a Notion page titled "'+projName()+' — status" as a child of this parent: '+dest+'. If a page with that exact title already exists under the parent, update it in place; otherwise create it. Write this as the body (faithful markdown→Notion blocks):\n\n# 📋 '+projName()+' — status\n\n## Board\n'+board+'\n\n## Plan\n'+plan+'\n\n## Notes\n'+notes+'\n\nReply with only the page URL. Do NOT write any local files.';
+  const notesMd=(pd.notes&&pd.notes.length)?notesByDateMd(pd.notes):'_No notes yet._';
+  const md='# 📋 '+projName()+' — status\n\n_Updated '+fmtDate(Date.now())+'_\n\n## 📌 Board\n- '+summaryText()+'\n\n---\n\n## 🗓 Plan\n'+planByDayMd()+'\n\n---\n\n## 📝 Notes (by date)\n'+notesMd;
+  const prompt='Using your Notion MCP tools, create OR update a Notion page titled "'+projName()+' — status" as a child of this parent: '+dest+'. If a page with that exact title already exists under the parent, replace its body; otherwise create it.'+notionBlockRules()+'\n\n'+md+'\n\nReply with only the page URL. Do NOT write any local files.';
   runNotion('push',prompt);}
 function syncFromNotion(){const links=notionLinks();if(!links.length){toast('Add a Notion link in PROJECTS → EDIT first','err');return;}
   const prompt='Using your Notion MCP tools, OPEN and READ these Notion pages (they are behind auth — only your Notion tools can see them) and summarise their current content so the planning team can use them as context:\n'+links.map(l=>'- '+(l.label||l.url)+': '+l.url).join('\n')+'\n\nFor each page, output a short titled section with the key facts, decisions, requirements and any dates. Tight markdown. Do NOT write any local files.';
@@ -734,7 +742,7 @@ const COSMETICS=[
 function xpForLevel(n){return (n-1)*(n-1)*60;}                 // lv2=60, lv3=240, lv4=540…
 function levelFromXp(xp){let n=1;while(n<8&&xpForLevel(n+1)<=(xp||0))n++;return n;}
 let gameState=null;   // rewards (XP · levels · cosmetics · score · streak) are GLOBAL — shared across every project
-function ensureGame(){if(!gameState)gameState={score:0,combo:0,comboUntil:0,streak:0,lastDoneDate:'',doneIds:[],stage:{},xp:{},equip:{},flashUntil:0,flashTxt:'',_init:false};if(!gameState.stage)gameState.stage={};if(!gameState.xp)gameState.xp={};if(!gameState.equip)gameState.equip={};if(!gameState.seenProjects)gameState.seenProjects={};return gameState;}
+function ensureGame(){if(!gameState)gameState={score:0,combo:0,comboUntil:0,streak:0,lastDoneDate:'',doneIds:[],stage:{},xp:{},equip:{},flashUntil:0,flashTxt:'',_init:false};if(!gameState.stage)gameState.stage={};if(!gameState.xp)gameState.xp={};if(!gameState.equip)gameState.equip={};if(!gameState.seenProjects)gameState.seenProjects={};if(!gameState.settings)gameState.settings={sound:true,notify:true};return gameState;}
 function agentXp(id){const g=ensureGame();return (g&&g.xp[id])||0;}
 function agentLevel(id){return levelFromXp(agentXp(id));}
 function cosmeticUnlocked(id,cid){const c=COSMETICS.find(x=>x.id===cid);return c?agentLevel(id)>=c.lv:false;}
@@ -1214,8 +1222,12 @@ function renderAgents(){const time=performance.now()-t0;
     '<div class="kv" style="margin-top:6px"><b>PIPELINE</b></div><div class="row2" style="flex-wrap:wrap;gap:4px">'+COLS.map(c=>{const n=owned.filter(t=>colOf(t.status)===c.key).length;return '<span class="chip" style="background:'+c.accent+'">'+c.label+' '+n+'</span>';}).join('')+'</div>'+
     '<div class="kv" style="margin-top:8px"><b>BREADCRUMB</b> — what they\'ve done</div><div class="hist">'+(bc.length?bc.map(e=>'<div class="h">'+new Date(e.ts).toLocaleTimeString()+' — '+esc(e.text)+'</div>').join(''):'<div class="why">no activity yet</div>')+'</div>';}
   else if(agentSub==='history'){const h=agentHist[a.id]||[];body='<div class="hist">'+(h.length?h.slice().reverse().map(e=>'<div class="h">'+new Date(e.ts).toLocaleTimeString()+' — '+esc(e.text)+'</div>').join(''):'<div class="why">No history yet. Runs and board actions appear here, and are saved to the agent-memory folder.</div>')+'</div>';}
-  else if(agentSub==='terminal'){body='<div class="kv"><b>RUNS ON</b> '+(a.model||'its')+' model · your account</div><div class="aterm" id="aterm"></div>'+
-    '<div class="terminput" style="border:2px solid var(--line);border-radius:6px;margin-top:6px"><span>&gt;</span><input id="atermIn" placeholder="Run a prompt as '+esc(a.name||a.id)+'… (Enter)"/></div>';}
+  else if(agentSub==='terminal'){const isMgr=a.id==='architect';const mf=isMgr&&termMode==='feature';
+    body='<div class="kv"><b>RUNS ON</b> '+(a.model||'its')+' model · your account</div>'+
+    (isMgr?('<div class="row2" id="amModeRow" style="gap:6px;margin:4px 0;align-items:center"><button class="mini'+(termMode==='feature'?' gold':'')+'" id="amFeature">🗂 Feature request</button><button class="mini'+(termMode==='feature'?'':' gold')+'" id="amAsk">💬 Ask</button> <span class="why" style="margin:0;flex:1">feature requests are planned and delegated onto the board</span></div>'):'')+
+    '<div class="aterm" id="aterm"></div>'+
+    '<div class="terminput" style="border:2px solid var(--line);border-radius:6px;margin-top:6px"><span>&gt;</span><input id="atermIn" placeholder="'+(mf?'Describe a feature — planned and delegated onto the board (Enter)':'Run a prompt as '+esc(a.name||a.id)+'… (Enter)')+'"/></div>'+
+    '<div class="row2" style="margin-top:4px"><button class="mini red" id="atermStop" title="cancel this run">■ STOP</button></div>';}
   else {body='<div class="kv"><b>DESCRIPTION</b></div><textarea id="agDesc" rows="2" placeholder="what this agent is for…">'+esc(a.description||'')+'</textarea>'+
     '<div class="kv"><b>RULESET</b></div><textarea id="agRules" rows="3" placeholder="rules / conventions this agent must follow…">'+esc(a.rules||'')+'</textarea>'+
     '<div class="kv" style="margin-top:6px"><b>FOLDERS</b></div><div class="flist">'+((a.folders||[]).map(p=>'<div class="f2"><span style="flex:1;word-break:break-all">'+esc(p)+'</span><button class="mini red afrm" data-p="'+esc(p)+'">✕</button></div>').join('')||'<div class="why">none</div>')+'</div>'+
@@ -1227,7 +1239,12 @@ function renderAgents(){const time=performance.now()-t0;
   mbody.querySelectorAll('.ti[data-id]').forEach(el=>el.onclick=()=>{const t=(state.tasks||[]).find(x=>x.id===el.getAttribute('data-id'));if(t)openTask(t);});
   if(agentSub==='state'){const gm=ensureGame();mbody.querySelectorAll('.cosbtn').forEach(b=>{if(b.classList.contains('lock')||!gm)return;b.onclick=()=>{gm.equip[a.id]=b.getAttribute('data-c');persistProjects();renderTab();};});
     const ms=document.getElementById('agModelSel');if(ms)ms.onchange=async()=>{a.model=ms.value;persistProjects();if(ELECTRON&&window.munder.saveAgents){try{await window.munder.saveAgents({agents:roster,removed:removedIds});removedIds=[];}catch(e){}}toast((a.id==='architect'?'Manager':(a.name||a.id))+' now runs on '+a.model,'ok');};}
-  if(agentSub==='terminal'){renderAgentTerm(a.id);const ain=document.getElementById('atermIn');if(ain)ain.addEventListener('keydown',async e=>{if(e.key!=='Enter')return;const v=ain.value.trim();if(!v)return;ain.value='';termLine('> '+v,'sys',a.id);pushHist(a.id,'terminal: '+v);
+  if(agentSub==='terminal'){renderAgentTerm(a.id);
+    if(a.id==='architect'){const bf=document.getElementById('amFeature');if(bf)bf.onclick=()=>{termMode='feature';renderTab();};const ba=document.getElementById('amAsk');if(ba)ba.onclick=()=>{termMode='ask';renderTab();};}
+    {const as=document.getElementById('atermStop');if(as)as.onclick=()=>stopRun(a.id==='architect'?'main':a.id);}
+    const ain=document.getElementById('atermIn');if(ain)ain.addEventListener('keydown',async e=>{if(e.key!=='Enter')return;const v=ain.value.trim();if(!v)return;ain.value='';
+    if(a.id==='architect'&&termMode==='feature'){fileFeatureRequest(v,'P1',state.capacityHoursPerDay||6);return;}
+    termLine('> '+v,'sys',a.id);pushHist(a.id,'terminal: '+v);
     if(!ELECTRON){termLine('Agent terminals run in the desktop app.','dim',a.id);return;}busyUntil[a.id]=performance.now()-t0+600000;
     try{const r=await window.munder.runAgent({agentId:a.id,name:a.name,role:a.role,model:a.model,rules:a.rules,dirs:a.folders||[],prompt:v});if(!r||!r.ok){busyUntil[a.id]=performance.now()-t0;termLine('failed: '+((r&&r.error)||'?'),'err',a.id);}}catch(err){termLine('error: '+err.message,'err',a.id);}});}
   if(agentSub==='rules'){const save=async()=>{a.rules=document.getElementById('agRules').value;const dd=document.getElementById('agDesc');if(dd)a.description=dd.value;if(ELECTRON)await window.munder.saveAgents({agents:roster,removed:removedIds});persistProjects();};
@@ -1338,7 +1355,9 @@ function renderAgentTerm(id){const ae=document.getElementById('aterm');if(!ae)re
 function termState(){}
 /* ---- notifications + audio cues ---- */
 let _ac=null;
-function chime(kind){try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const ac=_ac;if(ac.state==='suspended')ac.resume();
+function soundEnabled(){return !(gameState&&gameState.settings&&gameState.settings.sound===false);}   // default ON unless muted in Options
+function notifEnabled(){return !(gameState&&gameState.settings&&gameState.settings.notify===false);}
+function chime(kind){if(!soundEnabled())return;try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const ac=_ac;if(ac.state==='suspended')ac.resume();
   const notes=kind==='err'?[392,294,196]:[523,659,784,1047];let t=ac.currentTime;
   notes.forEach((f,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=f;o.connect(g);g.connect(ac.destination);const s=t+i*0.10;g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(0.2,s+0.02);g.gain.exponentialRampToValueAtTime(0.0001,s+0.18);o.start(s);o.stop(s+0.2);});}catch(e){}}
 function agentPhotoURL(id){try{const a=roster.find(x=>x.id===id);const cv=document.createElement('canvas');cv.width=cv.height=36;drawPortrait(cv,(a&&a.app)||genApp(a||{id:id}),id);return cv.toDataURL();}catch(e){return null;}}
@@ -1346,7 +1365,7 @@ function toast(msg,kind,who){let w=document.getElementById('toastwrap');if(!w){w
   const d=document.createElement('div');d.className='toast '+(kind||'');const url=who?agentPhotoURL(who):null;
   d.innerHTML=(url?'<img src="'+url+'" style="width:22px;height:22px;image-rendering:pixelated;border-radius:4px;vertical-align:middle;margin-right:8px;border:1px solid #0006">':'')+'<span style="vertical-align:middle">'+esc(msg)+'</span>';
   w.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));setTimeout(()=>{d.classList.remove('show');setTimeout(()=>d.remove(),400);},4400);}
-function notify(title,msg,kind,who){toast(msg||title,kind,who);chime(kind);try{if('Notification'in window&&Notification.permission==='granted'){const icon=who?agentPhotoURL(who):null;new Notification('Kanban Office',{body:(title?title+' — ':'')+(msg||''),icon:icon||undefined});}}catch(e){}}
+function notify(title,msg,kind,who){toast(msg||title,kind,who);chime(kind);try{if(notifEnabled()&&'Notification'in window&&Notification.permission==='granted'){const icon=who?agentPhotoURL(who):null;new Notification('Kanban Office',{body:(title?title+' — ':'')+(msg||''),icon:icon||undefined});}}catch(e){}}
 function noteBadge(){const b=document.getElementById('notesBtn');if(!b)return;const n=(projData[activeProj]||{}).noteNew||0;b.textContent='NOTES'+(n>0?' ('+n+')':'');}
 function addProjectNote(projId,text,system,agent){if(!projId)return;const pd=projData[projId]||(projData[projId]={});const notes=pd.notes||(pd.notes=[]);if(notes.some(n=>n.text===text))return;notes.push({ts:Date.now(),text,agent:agent||null});if(system)pd.noteNew=(pd.noteNew||0)+1;persistProjects();if(ELECTRON&&window.munder.appendAgentMemory)window.munder.appendAgentMemory({agentId:'project-'+projId,entry:{ts:Date.now(),text:'note: '+text}});noteBadge();}
 function setStatus(m,c){const txt2=(m||'').replace(/<[^>]+>/g,'').replace(/&#9654;/g,'▸');termLine(txt2,c==='err'?'err':(c==='ok'?'ok':'dim'));}
@@ -1479,14 +1498,46 @@ function ensureFlow(){if(!ELECTRON||!activeProj||!autoFlow||roundtable)return;no
 function runMainPrompt(v){if(!activeProj){termLine('Create a project first — use the PROJECTS button (top bar).','err');openCreateProject();return;}const pj='For project "'+projName()+'": ';if(ELECTRON){termLine('['+projName()+'] > '+v+' · '+(architectModel()||'default'),'sys');planning=true;acceptState=true;runProj=activeProj;window.munder.runPrompt({prompt:architectRole()+'\n\n'+pj+v+projContext()+teamConstraint(),model:architectModel()}).then(r=>{if(!r||!r.ok){planning=false;termLine('failed: '+((r&&r.error)||'?'),'err');}}).catch(err=>{planning=false;termLine('error: '+err.message,'err');});}
   else if(SERVER){fetch('/api/request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({feature:pj+v,priority:'P1',capacity:6})}).then(r=>r.json()).then(j=>termLine(j.ok?'Filed ▸ the Architect picked it up.':'Server rejected it.',j.ok?'ok':'err')).catch(()=>termLine('Server unreachable.','err'));}
   else termLine('Launch the desktop app to run Claude Code.','dim');}
+let termMode='feature';   // 'feature' = plan+delegate onto the board (fileRequest pipeline); 'ask' = free-form question to the Manager
+// File a feature request through the proven intake-to-plan pipeline — it writes a schema-correct office-state.json (tasks + days), which the board & Gantt read. The free-form 'ask' path does NOT, which is why a request typed there can leave the board empty.
+function fileFeatureRequest(feature,priority,capacity){
+  if(!activeProj){termLine('Create a project first — use the PROJECTS button (top bar).','err');openCreateProject();return Promise.resolve();}
+  priority=priority||'P1';capacity=Number(capacity)||(state.capacityHoursPerDay||6);
+  if(!ELECTRON){if(SERVER){fetch('/api/request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({feature:'For project "'+projName()+'": '+feature,priority,capacity})}).then(r=>r.json()).then(j=>termLine(j.ok?'Filed ▸ the Manager picked it up.':'Server rejected it.',j.ok?'ok':'err')).catch(()=>termLine('Server unreachable.','err'));}else termLine('Feature requests run in the desktop app.','dim');return Promise.resolve();}
+  termLine('['+projName()+'] 🗂 feature request ('+priority+', '+capacity+'h/day) · '+(architectModel()||'default')+'\n> '+feature,'sys');
+  planning=true;acceptState=true;runProj=activeProj;termState('running');
+  return window.munder.fileRequest({feature:'For project "'+projName()+'": '+feature+projContext(),priority,capacity,team:teamConstraint(),model:architectModel()})
+    .then(r=>{if(!r||!r.ok){planning=false;termLine('failed: '+((r&&r.error)||'?'),'err');}})
+    .catch(err=>{planning=false;termLine('error: '+err.message,'err');});}
+// STOP: cancel a run in flight. who='main' (or architect) cancels the planning/feature run + any roundtable fan-out; otherwise cancels that one agent.
+function stopRun(who){if(!ELECTRON||!window.munder.cancelRun){termLine('Stop runs in the desktop app.','dim');return;}
+  if(who&&who!=='main'&&who!=='architect'){window.munder.cancelRun({who});busyUntil[who]=performance.now()-t0;if(stageCaps[who])delete stageCaps[who];termLine('■ stopped','err',who);toast('Run stopped','err');if(currentPanel)renderTab();return;}
+  const wasRt=!!roundtable;roundtable=null;suggestMode=false;notionMode=null;
+  window.munder.cancelRun(wasRt?{all:true}:{who:'main'});
+  planning=false;activeAgent=null;runProj=null;busyUntil['architect']=performance.now()-t0;
+  if(wasRt)roster.forEach(a=>{busyUntil[a.id]=performance.now()-t0;});
+  termLine('■ stopped — run cancelled','err');termState('idle');toast('Run stopped','err');if(currentPanel)renderTab();}
 function renderTerminal(){mtitleEl.textContent='CLAUDE CODE';
   const projSel='<span style="font-size:12px;color:var(--ink-soft)">Planning for</span><select class="f" id="termProj" style="width:auto">'+(projects.length?projects.map(p=>'<option value="'+p.id+'"'+(p.id===activeProj?' selected':'')+'>'+esc(p.name)+'</option>').join(''):'<option value="">— create a project —</option>')+'</select>';
+  const feat=termMode==='feature';
+  const modeRow='<div class="row2" id="termModeRow" style="gap:6px;margin:4px 0;align-items:center">'+
+    '<button class="mini'+(feat?' gold':'')+'" id="tmFeature">🗂 Feature request</button>'+
+    '<button class="mini'+(feat?'':' gold')+'" id="tmAsk">💬 Ask the Manager</button>'+
+    '<button class="mini red" id="tmStop" title="cancel the run in progress">■ STOP</button>'+
+    '<span id="termFeatOpts" style="'+(feat?'display:flex':'display:none')+';align-items:center;gap:6px;margin-left:auto"><span class="why" style="margin:0">priority</span><select class="f" id="termPri" style="width:auto">'+['P0','P1','P2','P3'].map(p=>'<option'+(p==='P1'?' selected':'')+'>'+p+'</option>').join('')+'</select><span class="why" style="margin:0">h/day</span><input class="f" id="termCap" type="number" min="1" max="12" value="'+(state.capacityHoursPerDay||6)+'" style="width:46px"/></span></div>';
   mbody.innerHTML='<div class="row2"><span class="pill" id="termStatePill">'+officeStatus()+'</span>'+projSel+'<span id="termstate" style="margin-left:auto;font-family:Silkscreen;font-size:9px"></span></div>'+
-    '<div class="term" id="term" style="height:320px;border:2px solid var(--line);border-radius:6px"></div>'+
-    '<div class="terminput" style="border:2px solid var(--line);border-radius:6px;margin-top:6px"><span>&gt;</span><input id="termIn" placeholder="Plan a feature for the selected project… e.g. a dynamic weather system, P1, 6h a day (Enter)"/></div>';
+    modeRow+
+    '<div class="term" id="term" style="height:300px;border:2px solid var(--line);border-radius:6px"></div>'+
+    '<div class="terminput" style="border:2px solid var(--line);border-radius:6px;margin-top:6px"><span>&gt;</span><input id="termIn" placeholder="'+(feat?'Describe the feature — the Manager plans &amp; delegates it onto the board (Enter)':'Ask the Manager anything about the plan or team (Enter)')+'"/></div>'+
+    '<div class="why" style="margin-top:4px">'+(feat?'Runs the full intake → scope → tasks → estimate → schedule pipeline and writes the board + Gantt.':'Free-form chat with the Manager — does not change the board.')+'</div>';
   const tp=document.getElementById('termProj');if(tp)tp.onchange=()=>{const v=tp.value;if(v&&v!==activeProj){switchProject(v);renderTab();}};
+  const bf=document.getElementById('tmFeature');if(bf)bf.onclick=()=>{termMode='feature';renderTab();};
+  const ba=document.getElementById('tmAsk');if(ba)ba.onclick=()=>{termMode='ask';renderTab();};
+  const bs=document.getElementById('tmStop');if(bs)bs.onclick=()=>stopRun('main');
   const te=document.getElementById('term');(termBuffers.main||[]).forEach(l=>{const d=document.createElement('span');d.className='ln'+(l.cls?' '+l.cls:'');d.textContent=l.text;te.appendChild(d);});te.scrollTop=te.scrollHeight;
-  const ti=document.getElementById('termIn');ti.focus();ti.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const v=ti.value.trim();if(!v)return;ti.value='';runMainPrompt(v);});}
+  const ti=document.getElementById('termIn');ti.focus();ti.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const v=ti.value.trim();if(!v)return;ti.value='';
+    if(termMode==='feature'){const pri=(document.getElementById('termPri')||{}).value||'P1';const cap=Number((document.getElementById('termCap')||{}).value)||(state.capacityHoursPerDay||6);fileFeatureRequest(v,pri,cap);}
+    else runMainPrompt(v);});}
 
 /* ---- change request ---- */
 async function fileChange(t,note){const st=document.getElementById('chgStatus'),feature='Task '+t.id+' ('+(t.title||'')+'): '+note;
@@ -1538,6 +1589,8 @@ function openOptions(){const v=appVersion||'…';
     '<div class="row2" style="margin-top:8px"><button class="mini gold" id="optCheck">⟳ CHECK FOR UPDATES</button> <span id="optUpSt" style="font-size:13px;color:var(--ink-soft)"></span></div>'+
     '<div class="sect" style="margin-top:12px">AUTOMATION</div>'+
     '<div class="row2"><button class="mini" id="optAuto"></button> <span class="why" style="margin:0">When ON, agents auto-pull the backlog and run WIP/Review without you moving cards.</span></div>'+
+    '<div class="sect" style="margin-top:12px">SOUND &amp; ALERTS</div>'+
+    '<div class="row2"><button class="mini" id="optSound"></button><button class="mini" id="optNotif"></button> <span class="why" style="margin:0">Mute the chimes, or stop desktop notification pop-ups (in-app toasts stay).</span></div>'+
     '<div class="sect" style="margin-top:12px">CREDITS</div>'+
     '<div class="why" style="line-height:1.7">Created by <b>Ronnie Legaspi</b>.<br>Planning agents run on <b>Claude Code</b> (Anthropic) using your own account.<br>Pixel-art office, Kanban &amp; Gantt engine: hand-built HTML canvas — no frameworks.</div>'+
     '<div class="row2" style="margin-top:8px"><button class="mini" id="optRepo">GITHUB ↗</button><button class="mini" id="optRel">RELEASES ↗</button></div>'+
@@ -1549,7 +1602,13 @@ function openOptions(){const v=appVersion||'…';
   document.getElementById('optCheck').onclick=checkUpdatesUI;
   const setAuto=()=>{const b=document.getElementById('optAuto');if(b){b.textContent='⚙ AUTO-FLOW: '+(autoFlow?'ON':'OFF');b.classList.toggle('gold',autoFlow);}};
   setAuto();
-  document.getElementById('optAuto').onclick=()=>{autoFlow=!autoFlow;setAuto();toast('Auto-flow '+(autoFlow?'ON — agents pull backlog & run WIP/Review':'OFF — move cards manually'),autoFlow?'ok':'');};}
+  document.getElementById('optAuto').onclick=()=>{autoFlow=!autoFlow;setAuto();toast('Auto-flow '+(autoFlow?'ON — agents pull backlog & run WIP/Review':'OFF — move cards manually'),autoFlow?'ok':'');};
+  const g=ensureGame();
+  const setSnd=()=>{const b=document.getElementById('optSound');if(b){const on=soundEnabled();b.textContent=(on?'🔊':'🔇')+' SOUND: '+(on?'ON':'MUTED');b.classList.toggle('gold',on);}};
+  const setNtf=()=>{const b=document.getElementById('optNotif');if(b){const on=notifEnabled();b.textContent=(on?'🔔':'🔕')+' NOTIFICATIONS: '+(on?'ON':'OFF');b.classList.toggle('gold',on);}};
+  setSnd();setNtf();
+  document.getElementById('optSound').onclick=()=>{g.settings.sound=!soundEnabled();persistProjects();setSnd();if(g.settings.sound)chime('ok');toast('Sound '+(g.settings.sound?'on':'muted'),g.settings.sound?'ok':'');};
+  document.getElementById('optNotif').onclick=()=>{g.settings.notify=!notifEnabled();persistProjects();setNtf();if(g.settings.notify){try{if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}}toast('Desktop notifications '+(g.settings.notify?'on':'off'),g.settings.notify?'ok':'');};}
 async function checkUpdatesUI(){const st=document.getElementById('optUpSt'),btn=document.getElementById('optCheck');
   if(!ELECTRON||!window.munder.checkUpdate){if(st)st.textContent='Updates work in the desktop app only.';return;}
   if(st)st.textContent='Checking…';if(btn)btn.disabled=true;

@@ -6,6 +6,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('munder', {
   fileRequest: (payload) => ipcRenderer.invoke('file-request', payload),
   runPrompt: (payload) => ipcRenderer.invoke('run-prompt', payload),
+  cancelRun: (payload) => ipcRenderer.invoke('cancel-run', payload),
   getState: () => ipcRenderer.invoke('get-state'),
   getAgents: () => ipcRenderer.invoke('get-agents'),
   saveAgents: (payload) => ipcRenderer.invoke('save-agents', payload),
