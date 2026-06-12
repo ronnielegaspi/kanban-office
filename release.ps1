@@ -57,6 +57,10 @@ foreach ($d in @($arm,$x64)) {
 }
 
 Step "4/7  Rebuild app.zip (arm64 + x64)"
+# CRITICAL: never ship the per-install 'workspace' folder. It holds the user's live projects.json / office-state.json
+# at the install location; if it rides along in the zip, the updater's Expand-Archive -Force overwrites the user's
+# data with this build machine's stale snapshot (data loss / revert-to-old-tasks). Strip it before zipping.
+Remove-Item (Join-Path $arm 'workspace'),(Join-Path $x64 'workspace') -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $base 'installer-build\app.zip'),(Join-Path $base 'installer-build-x64\app.zip') -ErrorAction SilentlyContinue
 Compress-Archive -Path $arm -DestinationPath (Join-Path $base 'installer-build\app.zip') -Force
 Compress-Archive -Path $x64 -DestinationPath (Join-Path $base 'installer-build-x64\app.zip') -Force

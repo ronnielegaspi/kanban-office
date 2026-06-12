@@ -282,7 +282,10 @@ ipcMain.handle('download-update', async (_e, url) => {
   try { if (!url) return { ok: false, error: 'no url' }; const dest = path.join(os.tmpdir(), 'KanbanOffice-Update.exe'); await _download(url, dest); const ch = spawn(dest, [], { detached: true, stdio: 'ignore' }); ch.unref(); setTimeout(() => { try { app.quit(); } catch (e) {} }, 1500); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
 });
 ipcMain.handle('get-projects', async () => { try { return JSON.parse(fs.readFileSync(PROJECTS_CFG, 'utf8')); } catch (e) { return null; } });
-ipcMain.handle('save-projects', async (_e, p) => { try { fs.writeFileSync(PROJECTS_CFG, JSON.stringify(p || {}, null, 2)); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; } });
+ipcMain.handle('save-projects', async (_e, p) => { try {
+  // keep the previous good copy as a backup before overwriting — a recovery point if a write or a bad update ever corrupts it
+  try { if (fs.existsSync(PROJECTS_CFG)) fs.copyFileSync(PROJECTS_CFG, PROJECTS_CFG + '.bak'); } catch (e) {}
+  fs.writeFileSync(PROJECTS_CFG, JSON.stringify(p || {}, null, 2)); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; } });
 ipcMain.handle('save-agents', async (_e, payload) => {
   const agents = (payload && payload.agents) || [];
   try {
