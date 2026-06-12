@@ -549,7 +549,7 @@ const ROOMS={
   office    :{x:135,y:148,w:80,h:98,floor:"#584255",wall:"#8e687c",label:"MANAGER",door:{x:175,y:148}},
   bullpen   :{x:221,y:148,w:233,h:98,floor:"#3d4b69",wall:"#627ea4",label:"OPEN PLAN",door:{x:330,y:148}}
 };
-const WB={x:26,y:19,w:116,h:46}, BOARD_FRONT={x:120,y:94};   // kanban board — centered on the conference back wall
+const WB={x:20,y:16,w:128,h:56}, BOARD_FRONT={x:84,y:94};   // kanban board — enlarged to fill the conference back wall; Manager stands centered in front
 const GBD={x:224,y:154,w:92,h:18};   // open-office gantt board — on the back wall, left of the door (x330), above the desks
 const WALLH=15;                       // taller camera-facing back wall (room for wall-mounted boards)
 function roomAt(x,y){for(const k in ROOMS){const r=ROOMS[k];if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)return k;}return null;}
@@ -974,7 +974,7 @@ function drawWhiteboard(){board3d(WB.x,WB.y,WB.w,WB.h,"#c9a24a");P(WB.x,WB.y,WB.
   // dedicated footer row for the "+N more" counters so they never overlap the cards
   P(WB.x+1,WB.y+WB.h-9,WB.w-2,1,"#e6dcc2");
   COLS.forEach((c,ci)=>{if(ov[c.key]>0)txt("+"+ov[c.key]+"",WB.x+ci*BCOLW+3,WB.y+WB.h-7,"#6b5d4a",6);});}
-function drawNote(x,y,task,carried){P(x-1,y+1,NOTEW+1,NOTEH,"rgba(0,0,0,.3)");P(x,y,NOTEW,NOTEH,"#fff4cf");P(x,y,2,NOTEH,PCOL[task.priority]||"#888");P(x+NOTEW-3,y+1,2,2,COLORS[task.owner]||"#999");txt((task.id||"").toUpperCase(),x+4,y+2,"#3a2f20",6);
+function drawNote(x,y,task,carried){P(x-1,y+1,NOTEW+1,NOTEH,"rgba(0,0,0,.3)");P(x,y,NOTEW,NOTEH,"#fff4cf");P(x,y,2,NOTEH,PCOL[task.priority]||"#888");P(x+NOTEW-3,y+1,2,2,COLORS[task.owner]||"#999");txt(fitText((task.id||"").toUpperCase(),NOTEW-8,6),x+4,y+2,"#3a2f20",6);
   if(carried){const g="#ffd34d";P(x,y,NOTEW,1,g);P(x,y+NOTEH-1,NOTEW,1,g);P(x,y,1,NOTEH,g);P(x+NOTEW-1,y,1,NOTEH,g);}}
 
 /* ---- people ---- */
@@ -1069,7 +1069,7 @@ function drawAmbient(time){
   steam(50,224,time,0.30);            // lounge table mug
   // water-cooler bubble glugging up the bottle (bullpen cooler ~444,154)
   if((Math.floor(time/520))%4===0)P(446,150+((Math.floor(time/180))%4),1,1,"rgba(150,220,240,.75)");
-  wallClock(148,10);                  // conference wall clock (right of the kanban board)
+  wallClock(152,10);                  // conference wall clock (right of the kanban board)
 }
 let _vig=null;
 function vignette(){if(!_vig){_vig=ctx.createRadialGradient(LOGW*SCALE/2,LOGH*SCALE*0.40,90,LOGW*SCALE/2,LOGH*SCALE/2,LOGW*SCALE*0.64);_vig.addColorStop(0,"rgba(0,0,0,0)");_vig.addColorStop(1,"rgba(0,0,0,0.30)");}ctx.fillStyle=_vig;ctx.fillRect(0,0,LOGW*SCALE,LOGH*SCALE);}
