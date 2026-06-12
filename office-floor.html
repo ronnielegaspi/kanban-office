@@ -165,11 +165,8 @@
     <div class="brand"><div class="logo">KO</div>
       <div><h1>KANBAN OFFICE <span id="appVer" style="font-family:Silkscreen,monospace;font-size:10px;color:var(--gold);vertical-align:middle;opacity:.85">v0.1.4</span></h1><div class="sub">A living PM office that runs Claude Code in itself.</div></div></div>
     <div class="controls">
-      <span class="live gp" id="liveChip"><span class="led"></span><span id="liveTxt">OFFLINE</span></span>
-      <button class="gbtn" id="ovBtn">OVERVIEW</button>
-      <button class="gbtn" id="bdBtn">BOARD</button>
-      <button class="gbtn" id="gnBtn">GANTT</button>
-      <button class="gbtn" id="agBtn">AGENTS</button>
+      <button class="gbtn" id="boardsBtn">▦ BOARD</button>
+      <button class="gbtn" id="agBtn">👥 TEAM</button>
       <button class="gbtn" id="pjBtn">PROJECTS</button>
       <button class="gbtn gold" id="notesBtn">NOTES</button>
       <button class="gbtn gold" id="termBtn">▶ TERMINAL</button>
@@ -183,7 +180,7 @@
   </div>
   <div class="roster gp" id="roster"></div>
 
-  <footer id="foot">Runs Claude Code in itself — open the TERMINAL to type a request and the team plans it onto the whiteboard.</footer>
+  <footer id="foot"><span class="live gp" id="liveChip" style="margin-right:10px"><span class="led"></span><span id="liveTxt">OFFLINE</span></span><span>Runs Claude Code in itself — open the TERMINAL to type a request and the team plans it onto the whiteboard.</span></footer>
 </div>
 
 <div class="overlay hidden" id="overlay"><div class="modal"><div class="mhead"><span id="mtitle">—</span><button class="mx" id="mclose">CLOSE ✕</button></div><div class="mbody" id="mbody"></div></div></div>
@@ -495,6 +492,7 @@ function openGantt(){
   const gf=document.getElementById('gFilter'); if(gf)gf.onchange=e=>{ganttFilter=e.target.value;openGantt();};
   const gs=document.getElementById('gStart'); if(gs)gs.onchange=e=>{if(e.target.value){bpState.startDate=e.target.value;commit();}};
   const gd=document.getElementById('gDevs'); if(gd)gd.onchange=e=>{const v=Math.max(1,parseInt(e.target.value,10)||1),p=projects.find(x=>x.id===baseProj);if(p)p.devs=v;finalizePlan(bpState,v);commit();};   // changing capacity re-balances the plan across all devs
+  injectBoardTabs('gantt');   // GANTT shares the merged board panel's sub-tab strip (Overview / Board / Gantt)
   const gfin=document.getElementById('gFinal'); if(gfin)gfin.onclick=()=>{finalizePlan(bpState,nDev);commit();};
   // date / duration inputs
   mbody.querySelectorAll('.gnm .e input').forEach(inp=>inp.onchange=()=>{const t=tasks[+inp.getAttribute('data-i')];if(!t)return;const k=inp.getAttribute('data-k');
@@ -1172,7 +1170,9 @@ function pushHist(id,text){(agentHist[id]=agentHist[id]||[]).push({ts:Date.now()
 /* ---- tabs / HUD ---- */
 let currentPanel=null;
 function openPanel(name){currentPanel=name;const m=document.querySelector('.modal');if(m)m.classList.toggle('wide',name==='board'||name==='agents');overlay.classList.remove('hidden');renderTab();}
-function renderTab(){if(!currentPanel)return;if(currentPanel==='overview'){mtitleEl.textContent='OVERVIEW';renderOverview();}else if(currentPanel==='agents'){mtitleEl.textContent='THE TEAM';renderAgents();}else if(currentPanel==='board'){mtitleEl.textContent='KANBAN BOARD';renderBoard();}else if(currentPanel==='roundtable'){mtitleEl.textContent='TEAM ROUNDTABLE — '+projName();renderRoundtable();}else if(currentPanel==='terminal'){renderTerminal();}}
+function renderTab(){if(!currentPanel)return;if(currentPanel==='overview'){mtitleEl.textContent='BOARD';renderOverview();injectBoardTabs('overview');}else if(currentPanel==='agents'){mtitleEl.textContent='THE TEAM';renderAgents();}else if(currentPanel==='board'){mtitleEl.textContent='BOARD';renderBoard();injectBoardTabs('board');}else if(currentPanel==='roundtable'){mtitleEl.textContent='TEAM ROUNDTABLE — '+projName();renderRoundtable();}else if(currentPanel==='terminal'){renderTerminal();}}
+function boardTabsHTML(active){return ['overview','board','gantt'].map(v=>'<div class="stab'+(active===v?' active':'')+'" data-bv="'+v+'">'+v.toUpperCase()+'</div>').join('');}
+function injectBoardTabs(active){if(!mbody)return;let strip=document.getElementById('boardSubtabs');if(!strip){strip=document.createElement('div');strip.className='subtabs';strip.id='boardSubtabs';strip.style.marginBottom='6px';mbody.insertBefore(strip,mbody.firstChild);}strip.innerHTML=boardTabsHTML(active);strip.querySelectorAll('.stab[data-bv]').forEach(b=>b.onclick=()=>{const v=b.getAttribute('data-bv');if(v==='overview')openPanel('overview');else if(v==='board')openPanel('board');else openGantt();});}
 function countByCol(){const c={backlog:0,inprogress:0,review:0,done:0};(state.tasks||[]).forEach(t=>c[colOf(t.status)]++);return c;}
 function renderOverview(){const r=state.request||{},cc=countByCol(),pc={P0:0,P1:0,P2:0,P3:0};(state.tasks||[]).forEach(t=>{if(pc[t.priority]!=null)pc[t.priority]++;});
   const g=ensureGame()||{score:0,streak:0,combo:0,comboUntil:0,doneIds:[]};const comboNow=(performance.now()-t0<g.comboUntil)?g.combo:1;
@@ -1254,6 +1254,15 @@ function renderAgents(){const time=performance.now()-t0;
     document.getElementById('agBuild').onclick=async()=>{const st=document.getElementById('agpStatus');if(!ELECTRON){st.textContent='Desktop app only.';return;}await save();st.textContent='Building .md…';busyUntil[a.id]=performance.now()-t0+600000;pushHist(a.id,'build .md');
       try{const r=await window.munder.buildAgentMd({agentId:a.id,name:a.name,role:a.role,model:a.model,rules:a.rules,dirs:a.folders||[]});st.textContent=r&&r.ok?'.md built ✓':'Failed.';}catch(e){st.textContent='Error: '+e.message;}};}}
 function projTasksOf(pid){if(pid===activeProj)return state.tasks||[];const pd=projData[pid];return (pd&&pd.state&&pd.state.tasks)||[];}
+function csvCell(v){v=(v==null?'':String(v));if(/[",\n]/.test(v))v='"'+v.replace(/"/g,'""')+'"';return v;}
+function colLabel(status){return ({backlog:'Backlog',inprogress:'In Progress',review:'Review',done:'Done'})[colOf(status)]||(status||'');}
+function tasksToCSV(ts){const cols=['ID','Summary','Description','Priority','Assignee','Estimate (h)','Day','Status','Epic','Dependencies'];   // headers chosen so JIRA / Notion DB / Sheets all map cleanly on import
+  const rows=ts.map(t=>[t.id,t.title,(t.description||'').replace(/\r/g,''),t.priority,ownerName(t.owner),t.estimateHours,t.day,colLabel(t.status),t.epic,(t.deps||[]).join(' ')].map(csvCell).join(','));
+  return cols.join(',')+'\r\n'+rows.join('\r\n');}
+function downloadFile(name,content,mime){try{const blob=new Blob([content],{type:(mime||'text/plain')+';charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},600);return true;}catch(e){toast('Export failed: '+e.message,'err');return false;}}
+function exportTasksCSV(){const ts=(boardFilter==='all'?projects.flatMap(p=>projTasksOf(p.id)):(state.tasks||[]));if(!ts.length){toast('No tasks to export','err');return;}
+  const base=(boardFilter==='all'?'all-projects':projName()).replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  if(downloadFile(base+'-tasks.csv',tasksToCSV(ts),'text/csv'))toast('Exported '+ts.length+' tasks → CSV (JIRA / Notion / Sheets ready)','ok');}
 function renderBoard(){
   let filter=boardFilter; if(filter!=='all'&&!projects.find(p=>p.id===filter))filter=activeProj;
   const items=[]; // {t,pid}
@@ -1272,7 +1281,8 @@ function renderBoard(){
   const distOpts=roster.map(a=>'<option value="'+a.id+'"'+(state.distributor===a.id?' selected':'')+'>'+esc(a.name||a.id)+'</option>').join('');
   const eopts='<option value="">All epics</option>'+epics.map(e=>'<option value="'+esc(e)+'"'+(epicFilter===e?' selected':'')+'>'+esc(e)+'</option>').join('');
   const doneN=by.done.length;
-  mbody.innerHTML='<div class="row2"><button class="mini gold" id="addTaskBtn">+ ADD TASK</button><span style="font-size:12px;color:var(--ink-soft)">Project:</span><select class="f" id="bdFilter" style="width:auto">'+fopts+'</select><span style="font-size:12px;color:var(--ink-soft)">Epic:</span><select class="f" id="bdEpic" style="width:auto">'+eopts+'</select><span style="font-size:12px;color:var(--ink-soft)">Distributor:</span><select class="f" id="distSel" style="width:auto">'+distOpts+'</select>'+(doneN?'<button class="mini" id="clrDone" style="margin-left:auto">🧹 CLEAR DONE ('+doneN+')</button>':'')+'</div><div class="kboard">'+cols+'</div>';
+  mbody.innerHTML='<div class="row2"><button class="mini gold" id="addTaskBtn">+ ADD TASK</button><span style="font-size:12px;color:var(--ink-soft)">Project:</span><select class="f" id="bdFilter" style="width:auto">'+fopts+'</select><span style="font-size:12px;color:var(--ink-soft)">Epic:</span><select class="f" id="bdEpic" style="width:auto">'+eopts+'</select><span style="font-size:12px;color:var(--ink-soft)">Distributor:</span><select class="f" id="distSel" style="width:auto">'+distOpts+'</select><button class="mini" id="bdExport" style="margin-left:auto" title="export tasks to CSV for JIRA / Notion / Sheets">⤓ EXPORT CSV</button>'+(doneN?'<button class="mini" id="clrDone">🧹 CLEAR DONE ('+doneN+')</button>':'')+'</div><div class="kboard">'+cols+'</div>';
+  {const ex=document.getElementById('bdExport');if(ex)ex.onclick=exportTasksCSV;}
   {const be=document.getElementById('bdEpic');if(be)be.onchange=e=>{epicFilter=e.target.value;renderTab();};}
   {const cd=document.getElementById('clrDone');if(cd)cd.onclick=()=>{if(!confirm('Remove all Done tasks from the board? (XP/levels are kept.)'))return;const rm=t=>colOf(t.status)==='done';
     const clr=st=>{if(!st)return;st.tasks=(st.tasks||[]).filter(t=>!rm(t));const ids=(st.tasks||[]).map(t=>t.id);(st.days||[]).forEach(d=>d.tasks=(d.tasks||[]).filter(x=>ids.includes(x)));};
@@ -1641,11 +1651,9 @@ function openLinks(){const rm='class="mini red rmlink"';const lst=arr=>arr.lengt
     selAgent=null;boardFilter='';ganttFilter='';cards={};A={};ensureAgents();applyState(state);renderRoster();
     if(ELECTRON){try{await window.munder.saveAgents({agents:roster,removed:removedIds});}catch(e){}removedIds=[];try{await window.munder.saveState({state});}catch(e){}}
     persistProjects();closeModal();renderTab();};}
-document.getElementById('ovBtn').onclick=()=>openPanel('overview');
+document.getElementById('boardsBtn').onclick=()=>openPanel('board');
 document.getElementById('agBtn').onclick=()=>{selAgent=null;openPanel('agents');};
-document.getElementById('bdBtn').onclick=()=>openPanel('board');
 document.getElementById('pjBtn').onclick=openProjects;
-document.getElementById('gnBtn').onclick=openGantt;
 document.getElementById('notesBtn').onclick=openNotes;
 document.getElementById('termBtn').onclick=()=>openPanel('terminal');
 document.getElementById('rtBtn').onclick=openRoundtable;
